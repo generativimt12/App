@@ -113,7 +113,6 @@ public class InCallActivity extends Activity {
         if(state==Call.STATE_RINGING){
             controls.addView(slideAction("ענה לשיחה  →",Ui.accent(this),true),new LinearLayout.LayoutParams(-1,Ui.dp(this,76)));
             controls.addView(slideAction("דחייה  →",Color.rgb(210,60,70),false),new LinearLayout.LayoutParams(-1,Ui.dp(this,76)));
-            animateControls();
             return;
         }
         Button mute=roundButton(isMuted()?"מושתק":"השתק",isMuted()?Ui.accent(this):Ui.card(this));mute.setOnClickListener(v->{IncomingCallService.toggleMute();refresh();});
