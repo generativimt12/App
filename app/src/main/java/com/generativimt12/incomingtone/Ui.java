@@ -33,7 +33,7 @@ public final class Ui {
         return d;
     }
 
-    public static int dp(Context c,float v){return c==null?(int)(v*1f+0.5f):(int)(v*c.getResources().getDisplayMetrics().density+0.5f);}
+    public static int dp(Context c,float v){return (int)(v*(c==null?android.content.res.Resources.getSystem().getDisplayMetrics().density:c.getResources().getDisplayMetrics().density)+0.5f);}
     public static GradientDrawable rounded(int color, float radius) {
         GradientDrawable d = new GradientDrawable();
         d.setColor(color); d.setCornerRadius(radius); return d;
