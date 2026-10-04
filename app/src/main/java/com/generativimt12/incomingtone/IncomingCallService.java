@@ -86,6 +86,20 @@ public class IncomingCallService extends InCallService {
             }
         }catch(Exception ignored){}
     }
+    public String currentRouteName(){
+        try{
+            if(android.os.Build.VERSION.SDK_INT>=34){
+                CallEndpoint e=getCurrentCallEndpoint();
+                if(e==null)return"טלפון";
+                if(e.getEndpointType()==CallEndpoint.TYPE_BLUETOOTH)return"Bluetooth";
+                if(e.getEndpointType()==CallEndpoint.TYPE_SPEAKER)return"רמקול";
+                return"טלפון";
+            }
+            int route=getCallAudioState()!=null?getCallAudioState().getRoute():CallAudioState.ROUTE_EARPIECE;
+            return route==CallAudioState.ROUTE_SPEAKER?"רמקול":(route==CallAudioState.ROUTE_BLUETOOTH?"Bluetooth":"טלפון");
+        }catch(Exception e){return"טלפון";}
+    }
+
     public boolean isMutedNow(){try{return getCallAudioState()!=null&&getCallAudioState().isMuted();}catch(Exception e){return false;}}
     public void setSpeakerNow(boolean on){try{setAudioRoute(on?CallAudioState.ROUTE_SPEAKER:CallAudioState.ROUTE_EARPIECE);}catch(Exception ignored){}}
     public boolean isSpeakerNow(){try{return getCallAudioState()!=null&&getCallAudioState().getRoute()==CallAudioState.ROUTE_SPEAKER;}catch(Exception e){return false;}}
