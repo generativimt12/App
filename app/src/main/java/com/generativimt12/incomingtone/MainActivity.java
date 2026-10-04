@@ -100,7 +100,7 @@ public class MainActivity extends Activity {
     private void showDialer(){
         TextView h=Ui.text(this,"חייגן",24);h.setTypeface(null,1);content.addView(h);
         TextView hint=Ui.text(this,"מקשי הטלפון הפיזיים פועלים ישירות. אין צורך בלוח מקשים על המסך.",13);hint.setTextColor(Ui.muted(this));hint.setPadding(0,2,0,12);content.addView(hint);
-        number=new EditText(this);number.setHint("מספר טלפון");number.setGravity(Gravity.CENTER);number.setTextSize(25);number.setTextColor(Ui.ink(this));number.setHintTextColor(Ui.muted(this));number.setSingleLine();number.setInputType(3);number.setShowSoftInputOnFocus(true);number.setBackground(Ui.rounded(Ui.card(this),26));
+        number=new EditText(this);number.setHint("מספר טלפון");number.setGravity(Gravity.CENTER);number.setTextSize(25);number.setTextColor(Ui.ink(this));number.setHintTextColor(Ui.muted(this));number.setSingleLine();number.setInputType(3);number.setShowSoftInputOnFocus(false);number.setBackground(Ui.rounded(Ui.card(this),26));
         LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,68);np.setMargins(0,4,0,12);content.addView(number,np);
         LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER);
         Button call=Ui.filled(this,"☎  התקשר");call.setOnClickListener(v->placeCall(number.getText().toString().trim()));
@@ -185,7 +185,22 @@ public class MainActivity extends Activity {
     private void requestDialerRole(){if(android.os.Build.VERSION.SDK_INT>=29){RoleManager rm=getSystemService(RoleManager.class);if(rm!=null&&rm.isRoleAvailable(RoleManager.ROLE_DIALER)&&!rm.isRoleHeld(RoleManager.ROLE_DIALER))startActivityForResult(rm.createRequestRoleIntent(RoleManager.ROLE_DIALER),ROLE_REQUEST);}else{Intent i=new Intent(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER);i.putExtra(TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME,getPackageName());startActivity(i);}}
     private String callType(int t){if(t==CallLog.Calls.INCOMING_TYPE)return"נכנסת";if(t==CallLog.Calls.OUTGOING_TYPE)return"יוצאת";if(t==CallLog.Calls.MISSED_TYPE)return"שיחה שלא נענתה";if(t==CallLog.Calls.REJECTED_TYPE)return"נדחתה";return"שיחה";}
     private TextView info(String s){TextView t=Ui.text(this,s,14);t.setTextColor(Ui.muted(this));t.setPadding(16,28,16,28);return t;}
-    private void requestDataPermissions(){if(android.os.Build.VERSION.SDK_INT>=23&&checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.READ_CONTACTS,Manifest.permission.WRITE_CONTACTS,Manifest.permission.READ_CALL_LOG,Manifest.permission.WRITE_CALL_LOG,Manifest.permission.CALL_PHONE,Manifest.permission.READ_PHONE_STATE},PERM_REQUEST);}
+    private void requestDataPermissions(){
+        if(android.os.Build.VERSION.SDK_INT<23)return;
+        java.util.ArrayList<String> missing=new java.util.ArrayList<>();
+        String[] wanted={Manifest.permission.READ_CONTACTS,Manifest.permission.WRITE_CONTACTS,Manifest.permission.READ_CALL_LOG,Manifest.permission.WRITE_CALL_LOG,Manifest.permission.CALL_PHONE,Manifest.permission.READ_PHONE_STATE};
+        for(String p:wanted)if(checkSelfPermission(p)!=PackageManager.PERMISSION_GRANTED)missing.add(p);
+        if(!missing.isEmpty())requestPermissions(missing.toArray(new String[0]),PERM_REQUEST);
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){
+        super.onRequestPermissionsResult(requestCode,permissions,grantResults);
+        if(requestCode==PERM_REQUEST){
+            ContactIndex.refreshAsync(this);
+            new android.os.Handler().postDelayed(()->{ContactIndex.refreshAsync(this);showPage();},1200);
+            new android.os.Handler().postDelayed(()->{ContactIndex.refreshAsync(this);showPage();},3200);
+        }
+    }
     private void handleDialIntent(Intent i){if(i!=null&&Intent.ACTION_DIAL.equals(i.getAction())&&i.getData()!=null&&number!=null){String s=i.getData().getSchemeSpecificPart();if(s!=null)number.setText(s);}}
 
 }
