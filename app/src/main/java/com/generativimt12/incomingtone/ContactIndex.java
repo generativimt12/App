@@ -30,7 +30,13 @@ public final class ContactIndex {
         if(c.checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED && c.checkSelfPermission(Manifest.permission.READ_CALL_LOG)!=PackageManager.PERMISSION_GRANTED)return;
         long now=System.currentTimeMillis(); if(now-lastRequest<30000)return; lastRequest=now; EXEC.execute(()->refresh(c.getApplicationContext()));
     }
-    public static void refreshAsync(Context c, Runnable done){\n        if(c.checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED && c.checkSelfPermission(Manifest.permission.READ_CALL_LOG)!=PackageManager.PERMISSION_GRANTED)return;\n        long now=System.currentTimeMillis(); if(now-lastRequest<30000)return; lastRequest=now;\n        EXEC.execute(()->{refresh(c.getApplicationContext()); if(done!=null)new android.os.Handler(android.os.Looper.getMainLooper()).post(done);});\n    }\n\n    private static void refresh(Context c){
+    public static void refreshAsync(Context c, Runnable done){
+        if(c.checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED && c.checkSelfPermission(Manifest.permission.READ_CALL_LOG)!=PackageManager.PERMISSION_GRANTED)return;
+        long now=System.currentTimeMillis(); if(now-lastRequest<30000)return; lastRequest=now;
+        EXEC.execute(()->{refresh(c.getApplicationContext()); if(done!=null)new android.os.Handler(android.os.Looper.getMainLooper()).post(done);});
+    }
+
+    private static void refresh(Context c){
         IndexDb helper=db(c); SQLiteDatabase d=helper.getWritableDatabase(); d.beginTransaction();
         try{
             if(c.checkSelfPermission(Manifest.permission.READ_CONTACTS)==PackageManager.PERMISSION_GRANTED){
