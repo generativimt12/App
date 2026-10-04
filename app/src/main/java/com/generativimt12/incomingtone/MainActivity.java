@@ -32,12 +32,13 @@ public class MainActivity extends Activity {
         super.onCreate(b);
         applyBars();
         build();
+        handleSpecialIntent(getIntent());
         handleDialIntent(getIntent());
         requestDataPermissions();
     }
 
     @Override protected void onResume(){ super.onResume(); applyBars(); if(content!=null){if(getIntent().getBooleanExtra("open_recent",false)){page=2;getIntent().removeExtra("open_recent");}showPage();} }
-    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);if(i!=null&&i.getBooleanExtra("open_recent",false))page=2;handleDialIntent(i);if(content!=null)showPage();}
+    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);handleSpecialIntent(i);handleDialIntent(i);if(content!=null)showPage();}
     @Override public boolean dispatchKeyEvent(KeyEvent event){
         if(event.getAction()==KeyEvent.ACTION_DOWN){
             int code=event.getKeyCode();
@@ -172,5 +173,14 @@ public class MainActivity extends Activity {
     private String callType(int t){if(t==CallLog.Calls.INCOMING_TYPE)return"נכנסת";if(t==CallLog.Calls.OUTGOING_TYPE)return"יוצאת";if(t==CallLog.Calls.MISSED_TYPE)return"שיחה שלא נענתה";if(t==CallLog.Calls.REJECTED_TYPE)return"נדחתה";return"שיחה";}
     private TextView info(String s){TextView t=Ui.text(this,s,14);t.setTextColor(Ui.muted(this));t.setPadding(16,28,16,28);return t;}
     private void requestDataPermissions(){if(android.os.Build.VERSION.SDK_INT>=23&&checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.READ_CONTACTS,Manifest.permission.WRITE_CONTACTS,Manifest.permission.READ_CALL_LOG,Manifest.permission.WRITE_CALL_LOG,Manifest.permission.CALL_PHONE,Manifest.permission.READ_PHONE_STATE},PERM_REQUEST);}
+    private void handleSpecialIntent(Intent i){
+        if(i==null)return;
+        if(Intent.ACTION_CALL_BUTTON.equals(i.getAction())){
+            android.telecom.Call c=IncomingCallService.getCurrentCall();
+            if(c!=null&&c.getState()==android.telecom.Call.STATE_RINGING){IncomingCallService.answerIncoming();}
+            else {page=2;i.putExtra("open_recent",true);}
+        }
+    }
     private void handleDialIntent(Intent i){if(i!=null&&Intent.ACTION_DIAL.equals(i.getAction())&&i.getData()!=null&&number!=null){String s=i.getData().getSchemeSpecificPart();if(s!=null)number.setText(s);}}
+
 }
