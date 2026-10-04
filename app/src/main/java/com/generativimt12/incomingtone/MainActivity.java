@@ -27,18 +27,19 @@ public class MainActivity extends Activity {
     private int page=0;
     private String query="";
 
+
     @Override protected void onCreate(Bundle b){
         setTheme(SettingsStore.dark(this) ? R.style.AppThemeDark : R.style.AppTheme);
         super.onCreate(b);
         applyBars();
         build();
-        handleSpecialIntent(getIntent());
         handleDialIntent(getIntent());
         requestDataPermissions();
+        ContactIndex.refreshAsync(this);
     }
 
-    @Override protected void onResume(){ super.onResume(); applyBars(); if(content!=null){if(getIntent().getBooleanExtra("open_recent",false)){page=2;getIntent().removeExtra("open_recent");}showPage();} }
-    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);handleSpecialIntent(i);handleDialIntent(i);if(content!=null)showPage();}
+    @Override protected void onResume(){ super.onResume(); applyBars(); if(content!=null){if(getIntent().getBooleanExtra("open_recent",false)){page=2;getIntent().removeExtra("open_recent");}ContactIndex.refreshAsync(this);showPage();} }
+    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);handleDialIntent(i);if(content!=null)showPage();}
     @Override public boolean dispatchKeyEvent(KeyEvent event){
         if(event.getAction()==KeyEvent.ACTION_DOWN){
             int code=event.getKeyCode();
@@ -115,7 +116,7 @@ public class MainActivity extends Activity {
         TextView hint=Ui.text(this,"אנשים שסימנת כמועדפים",13);hint.setTextColor(Ui.muted(this));hint.setPadding(0,2,0,12);content.addView(hint);
         if(checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED){content.addView(info("אשר הרשאת אנשי קשר כדי לראות מועדפים."));return;}
         LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);content.addView(list);
-        Cursor c=null;try{String sel=ContactsContract.CommonDataKinds.Phone.STARRED+"=1";c=getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,new String[]{ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,ContactsContract.CommonDataKinds.Phone.NUMBER,ContactsContract.CommonDataKinds.Phone.PHOTO_URI},sel,null,ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME+" COLLATE NOCASE");if(c!=null)while(c.moveToNext())addPersonCard(list,c.getString(0),c.getString(1),c.getString(2),true);}finally{if(c!=null)c.close();}
+        for(ContactIndex.ContactRow r:ContactIndex.favorites(this,500))addPersonCard(list,r.name,r.number,r.photo,r.favorite);
         if(list.getChildCount()==0)list.addView(info("אין עדיין מועדפים. סמן אנשי קשר כמועדפים באפליקציית אנשי הקשר."));
     }
 
@@ -123,7 +124,11 @@ public class MainActivity extends Activity {
         TextView h=Ui.text(this,"יומן שיחות",24);h.setTypeface(null,1);content.addView(h);
         TextView hint=Ui.text(this,"השיחות האחרונות שלך",13);hint.setTextColor(Ui.muted(this));hint.setPadding(0,2,0,12);content.addView(hint);
         if(checkSelfPermission(Manifest.permission.READ_CALL_LOG)!=PackageManager.PERMISSION_GRANTED){content.addView(info("אשר הרשאת יומן שיחות."));return;}
-        Cursor c=null;try{c=getContentResolver().query(CallLog.Calls.CONTENT_URI,new String[]{CallLog.Calls.NUMBER,CallLog.Calls.CACHED_NAME,CallLog.Calls.DATE,CallLog.Calls.TYPE,CallLog.Calls.DURATION},null,null,CallLog.Calls.DATE+" DESC LIMIT 80");if(c!=null)while(c.moveToNext()){String n=c.getString(0),name=c.getString(1);String label=(name==null||name.isEmpty()?n:name);String detail=callType(c.getInt(3))+"  •  "+DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(new Date(c.getLong(2)))+"  •  "+c.getLong(4)+" שנ׳";addCallCard(label,detail,n);}}finally{if(c!=null)c.close();}
+        for(ContactIndex.CallRow r:ContactIndex.calls(this,"",80)){
+            String label=(r.name==null||r.name.isEmpty()?r.number:r.name);
+            String detail=callType(r.type)+"  •  "+DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(new Date(r.date))+"  •  "+r.duration+" שנ׳";
+            addCallCard(label,detail,r.number);
+        }
     }
 
     private void showContacts(){
@@ -144,12 +149,20 @@ public class MainActivity extends Activity {
         }
         if(checkSelfPermission(Manifest.permission.READ_CALL_LOG)==PackageManager.PERMISSION_GRANTED){
             TextView lh=Ui.text(this,"שיחות",16);lh.setTypeface(null,1);lh.setPadding(0,14,0,5);content.addView(lh);
-            Cursor c=null;int count=0;try{String sel=CallLog.Calls.NUMBER+" LIKE ? OR "+CallLog.Calls.CACHED_NAME+" LIKE ?";String[] a={"%"+q+"%","%"+q+"%"};c=getContentResolver().query(CallLog.Calls.CONTENT_URI,new String[]{CallLog.Calls.NUMBER,CallLog.Calls.CACHED_NAME,CallLog.Calls.DATE,CallLog.Calls.TYPE,CallLog.Calls.DURATION},sel,a,CallLog.Calls.DATE+" DESC");if(c!=null)while(c.moveToNext()&&count<30){count++;String n=c.getString(0),name=c.getString(1);addCallCard(name==null||name.isEmpty()?n:name,callType(c.getInt(3))+"  •  "+DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(new Date(c.getLong(2))),n);}}finally{if(c!=null)c.close();}
+            int count=0;
+            for(ContactIndex.CallRow r:ContactIndex.calls(this,q,30)){
+                count++;String label=(r.name==null||r.name.isEmpty()?r.number:r.name);
+                String detail=callType(r.type)+"  •  "+DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(new Date(r.date));
+                addCallCard(label,detail,r.number);
+            }
+            if(count==0)content.addView(info("לא נמצאו שיחות."));
         }
     }
 
     private void loadContacts(LinearLayout list,String q){
-        list.removeAllViews();Cursor c=null;try{String sel=null;String[] args=null;if(!q.trim().isEmpty()){sel=ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME+" LIKE ? OR "+ContactsContract.CommonDataKinds.Phone.NUMBER+" LIKE ?";args=new String[]{"%"+q+"%","%"+q+"%"};}c=getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,new String[]{ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,ContactsContract.CommonDataKinds.Phone.NUMBER,ContactsContract.CommonDataKinds.Phone.PHOTO_URI,ContactsContract.CommonDataKinds.Phone.STARRED},sel,args,ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME+" COLLATE NOCASE");if(c!=null)while(c.moveToNext())addPersonCard(list,c.getString(0),c.getString(1),c.getString(2),c.getInt(3)==1);}finally{if(c!=null)c.close();}
+        list.removeAllViews();
+        if(checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED)return;
+        for(ContactIndex.ContactRow r:ContactIndex.contacts(this,q,500))addPersonCard(list,r.name,r.number,r.photo,r.favorite);
     }
 
     private void addPersonCard(LinearLayout list,String name,String n,String photo,boolean favorite){
@@ -173,14 +186,6 @@ public class MainActivity extends Activity {
     private String callType(int t){if(t==CallLog.Calls.INCOMING_TYPE)return"נכנסת";if(t==CallLog.Calls.OUTGOING_TYPE)return"יוצאת";if(t==CallLog.Calls.MISSED_TYPE)return"שיחה שלא נענתה";if(t==CallLog.Calls.REJECTED_TYPE)return"נדחתה";return"שיחה";}
     private TextView info(String s){TextView t=Ui.text(this,s,14);t.setTextColor(Ui.muted(this));t.setPadding(16,28,16,28);return t;}
     private void requestDataPermissions(){if(android.os.Build.VERSION.SDK_INT>=23&&checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.READ_CONTACTS,Manifest.permission.WRITE_CONTACTS,Manifest.permission.READ_CALL_LOG,Manifest.permission.WRITE_CALL_LOG,Manifest.permission.CALL_PHONE,Manifest.permission.READ_PHONE_STATE},PERM_REQUEST);}
-    private void handleSpecialIntent(Intent i){
-        if(i==null)return;
-        if(Intent.ACTION_CALL_BUTTON.equals(i.getAction())){
-            android.telecom.Call c=IncomingCallService.getCurrentCall();
-            if(c!=null&&c.getState()==android.telecom.Call.STATE_RINGING){IncomingCallService.answerIncoming();}
-            else {page=2;i.putExtra("open_recent",true);}
-        }
-    }
     private void handleDialIntent(Intent i){if(i!=null&&Intent.ACTION_DIAL.equals(i.getAction())&&i.getData()!=null&&number!=null){String s=i.getData().getSchemeSpecificPart();if(s!=null)number.setText(s);}}
 
 }
