@@ -54,9 +54,9 @@ public class InCallActivity extends Activity {
     private void applyBars(){getWindow().setStatusBarColor(Ui.bg(this));getWindow().setNavigationBarColor(Ui.bg(this));getWindow().getDecorView().setSystemUiVisibility(SettingsStore.dark(this)?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);}
 
     private void build(){
-        LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setGravity(Gravity.CENTER_HORIZONTAL);root.setPadding(24,28,24,20);root.setBackgroundColor(Ui.bg(this));
+        LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setGravity(Gravity.CENTER_HORIZONTAL);root.setPadding(Ui.dp(this,20),Ui.dp(this,18),Ui.dp(this,20),Ui.dp(this,12));root.setBackgroundColor(Ui.bg(this));
 
-        avatar=new ImageView(this);avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);avatar.setBackground(Ui.rounded(Ui.accent(this),100));root.addView(avatar,Ui.lp(104,104));
+        avatar=new ImageView(this);avatar.setScaleType(ImageView.ScaleType.CENTER_CROP);avatar.setBackground(Ui.rounded(Ui.accent(this),100));root.addView(avatar,Ui.lp(96,96));
         name=Ui.text(this,"",27);name.setGravity(Gravity.CENTER);name.setTypeface(null,1);LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,-2);np.setMargins(0,18,0,3);root.addView(name,np);
         number=Ui.text(this,"",15);number.setTextColor(Ui.muted(this));number.setGravity(Gravity.CENTER);root.addView(number);
         status=Ui.text(this,"",17);status.setGravity(Gravity.CENTER);status.setTextColor(Ui.accent(this));root.addView(status,new LinearLayout.LayoutParams(-1,40));
@@ -107,9 +107,8 @@ public class InCallActivity extends Activity {
     private void buildControls(int state){
         controls.removeAllViews();
         if(state==Call.STATE_RINGING){
-            Button decline=roundButton("דחה",Color.rgb(210,60,70));decline.setOnClickListener(v->end());
-            Button answer=roundButton("ענה",Ui.accent(this));answer.setOnClickListener(v->IncomingCallService.answerIncoming());
-            controls.addView(decline,Ui.lp(125,58));controls.addView(answer,Ui.lp(125,58));
+            controls.addView(slideAction("ענה לשיחה  →",Ui.accent(this),true),new LinearLayout.LayoutParams(-1,Ui.dp(this,76)));
+            controls.addView(slideAction("דחייה  →",Color.rgb(210,60,70),false),new LinearLayout.LayoutParams(-1,Ui.dp(this,76)));
             return;
         }
         Button mute=roundButton(isMuted()?"מושתק":"השתק",isMuted()?Ui.accent(this):Ui.card(this));mute.setOnClickListener(v->{IncomingCallService.toggleMute();refresh();});
@@ -123,6 +122,18 @@ public class InCallActivity extends Activity {
         TextView t=Ui.text(this,icon+"\n"+label,12);
         t.setGravity(Gravity.CENTER);t.setPadding(4,4,4,4);t.setTextColor(Ui.muted(this));
         return t;
+    }
+
+    private View slideAction(String label,int accent,boolean answer){
+        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setGravity(Gravity.CENTER_VERTICAL);box.setPadding(Ui.dp(this,12),Ui.dp(this,7),Ui.dp(this,12),Ui.dp(this,5));box.setBackground(Ui.glass(this,22));
+        TextView t=Ui.text(this,label,14);t.setTextColor(accent);t.setGravity(Gravity.CENTER);box.addView(t,new LinearLayout.LayoutParams(-1,Ui.dp(this,28)));
+        SeekBar bar=new SeekBar(this);bar.setMax(100);bar.setProgress(0);box.addView(bar,new LinearLayout.LayoutParams(-1,Ui.dp(this,38)));
+        bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            public void onProgressChanged(SeekBar s,int progress,boolean fromUser){if(progress>=82&&fromUser){if(answer)IncomingCallService.answerIncoming();else end();s.setProgress(0);}}
+            public void onStartTrackingTouch(SeekBar s){}
+            public void onStopTrackingTouch(SeekBar s){}
+        });
+        return box;
     }
 
     private Button roundButton(String s,int color){Button b=Ui.button(this,s);b.setTextColor(color==Ui.card(this)?Ui.ink(this):Color.WHITE);b.setBackground(Ui.rounded(color,30));b.setTextSize(14);return b;}
@@ -143,6 +154,7 @@ public class InCallActivity extends Activity {
     private String getNumber(Call c){try{Uri u=c.getDetails().getHandle();return u==null?"":u.getSchemeSpecificPart();}catch(Exception e){return"";}}
     private String findName(String n){if(n==null||n.isEmpty())return"טלפון";if(checkSelfPermission(android.Manifest.permission.READ_CONTACTS)!=0)return n;Cursor c=null;try{c=getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,new String[]{ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME},ContactsContract.CommonDataKinds.Phone.NUMBER+" LIKE ?",new String[]{"%"+n.replace("-","")+"%"},null);if(c!=null&&c.moveToFirst()){String x=c.getString(0);if(x!=null&&!x.isEmpty())return x;}}finally{if(c!=null)c.close();}return n;}
     private void loadPhoto(String n){avatar.setImageDrawable(null);if(n==null||n.isEmpty())return;Cursor c=null;try{c=getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,new String[]{ContactsContract.CommonDataKinds.Phone.PHOTO_URI},ContactsContract.CommonDataKinds.Phone.NUMBER+" LIKE ?",new String[]{"%"+n.replace("-","")+"%"},null);if(c!=null&&c.moveToFirst()){String p=c.getString(0);if(p!=null&&!p.isEmpty())avatar.setImageURI(Uri.parse(p));}}finally{if(c!=null)c.close();}if(avatar.getDrawable()==null){TextView tmp=new TextView(this);tmp.setText(name.getText().toString().substring(0,1));tmp.setTextColor(Color.WHITE);tmp.setTextSize(38);tmp.setGravity(Gravity.CENTER);tmp.setBackground(Ui.rounded(Ui.accent(this),100));android.graphics.Bitmap bm=android.graphics.Bitmap.createBitmap(104,104,android.graphics.Bitmap.Config.ARGB_8888);android.graphics.Canvas cv=new android.graphics.Canvas(bm);tmp.layout(0,0,104,104);tmp.draw(cv);avatar.setImageBitmap(bm);}}
+    private String contactIdForNumber(String n){try{java.util.List<ContactIndex.ContactRow> rows=ContactIndex.contacts(this,n,"",1);return rows.isEmpty()?"":rows.get(0).contactId();}catch(Exception e){return"";}}
     private String stateText(int s){switch(s){case Call.STATE_RINGING:return"שיחה נכנסת";case Call.STATE_DIALING:return"מחייג…";case Call.STATE_CONNECTING:return"מתחבר…";case Call.STATE_ACTIVE:return"בשיחה";case Call.STATE_HOLDING:return"בהמתנה";default:return"שיחה";}}
     private String formatElapsed(long ms){long sec=ms/1000;return String.format(Locale.US,"%02d:%02d",sec/60,sec%60);}
 }
