@@ -79,7 +79,10 @@ public class InCallActivity extends Activity {
 
     private void refresh(){
         Call c=current();if(c==null){finish();return;}
-        int state=c.getState();String n=getNumber(c);name.setText(findName(n));number.setText(n);status.setText(stateText(state));status.setTextColor(state==Call.STATE_RINGING?Ui.accent(this):(state==Call.STATE_ACTIVE?Ui.accent(this):Ui.muted(this)));
+        int state=c.getState();String n=getNumber(c);name.setText(findName(n));number.setText(n);
+        String stateLabel=stateText(state);
+        if(state==Call.STATE_RINGING && IncomingCallService.hasWaitingCall()) stateLabel="שיחה ממתינה";
+        status.setText(stateLabel);status.setTextColor(state==Call.STATE_RINGING?Ui.accent(this):(state==Call.STATE_ACTIVE?Ui.accent(this):Ui.muted(this)));
         loadPhoto(n);
         if(state==Call.STATE_ACTIVE){if(activeAt==0)activeAt=System.currentTimeMillis();timer.setText(formatElapsed(System.currentTimeMillis()-activeAt));}
         else {activeAt=0;timer.setText("");}
@@ -131,7 +134,7 @@ public class InCallActivity extends Activity {
         TextView t=Ui.text(this,label,14);t.setTextColor(accent);t.setGravity(Gravity.CENTER);box.addView(t,new LinearLayout.LayoutParams(-1,Ui.dp(this,28)));
         SeekBar bar=new SeekBar(this);bar.setMax(100);bar.setProgress(0);box.addView(bar,new LinearLayout.LayoutParams(-1,Ui.dp(this,38)));
         bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
-            public void onProgressChanged(SeekBar s,int progress,boolean fromUser){if(progress>=82&&fromUser){if(answer)IncomingCallService.answerIncoming();else end();s.setProgress(0);}}
+            public void onProgressChanged(SeekBar s,int progress,boolean fromUser){if(progress>=82&&fromUser){if(answer){if(IncomingCallService.hasWaitingCall())IncomingCallService.answerWaiting();else IncomingCallService.answerIncoming();}else end();s.setProgress(0);}}
             public void onStartTrackingTouch(SeekBar s){}
             public void onStopTrackingTouch(SeekBar s){}
         });
