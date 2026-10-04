@@ -10,6 +10,7 @@ import android.provider.ContactsContract;
 import android.telecom.Call;
 import android.telecom.CallAudioState;
 import android.view.*;
+import android.view.WindowManager;
 import android.widget.*;
 import java.util.*;
 
@@ -25,11 +26,35 @@ public class InCallActivity extends Activity {
 
     public static void finishIfOpen(){if(open!=null)open.runOnUiThread(()->{open.finish();open=null;});}
 
-    @Override protected void onCreate(Bundle b){setTheme(SettingsStore.dark(this) ? R.style.AppThemeDark : R.style.AppTheme);super.onCreate(b);open=this;applyBars();build();refresh();}
+    @Override protected void onCreate(Bundle b){
+        setTheme(SettingsStore.dark(this) ? R.style.AppThemeDark : R.style.AppTheme);
+        super.onCreate(b);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        open=this;
+        setFocusableInTouchMode(true);
+        requestFocus();
+        applyBars();build();refresh();
+    }
+    @Override protected void onPostResume(){super.onPostResume();requestFocus();}
     @Override protected void onResume(){super.onResume();refresh();handler.removeCallbacks(tick);handler.postDelayed(tick,400);}
+    @Override public boolean onKeyDown(int keyCode, KeyEvent event){
+        if(isAnswerKey(keyCode) && current()!=null && current().getState()==Call.STATE_RINGING){
+            IncomingCallService.answerIncoming();
+            return true;
+        }
+        return super.onKeyDown(keyCode,event);
+    }
+    private boolean isAnswerKey(int k){
+        return k==KeyEvent.KEYCODE_CALL || k==KeyEvent.KEYCODE_ENTER ||
+                k==KeyEvent.KEYCODE_DPAD_CENTER || k==KeyEvent.KEYCODE_HEADSETHOOK ||
+                k==KeyEvent.KEYCODE_DIAL || k==KeyEvent.KEYCODE_FOCUS;
+    }
+
     @Override public boolean dispatchKeyEvent(KeyEvent event){
         if(event.getAction()==KeyEvent.ACTION_DOWN &&
-                (event.getKeyCode()==KeyEvent.KEYCODE_CALL ||
+                (isAnswerKey(event.getKeyCode()) ||
                  event.getKeyCode()==KeyEvent.KEYCODE_ENTER ||
                  event.getKeyCode()==KeyEvent.KEYCODE_DPAD_CENTER ||
                  event.getKeyCode()==KeyEvent.KEYCODE_HEADSETHOOK)){
