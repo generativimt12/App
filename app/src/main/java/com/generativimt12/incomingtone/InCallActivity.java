@@ -27,6 +27,20 @@ public class InCallActivity extends Activity {
 
     @Override protected void onCreate(Bundle b){setTheme(SettingsStore.dark(this) ? R.style.AppThemeDark : R.style.AppTheme);super.onCreate(b);open=this;applyBars();build();refresh();}
     @Override protected void onResume(){super.onResume();refresh();handler.removeCallbacks(tick);handler.postDelayed(tick,400);}
+    @Override public boolean dispatchKeyEvent(KeyEvent event){
+        if(event.getAction()==KeyEvent.ACTION_DOWN && event.getKeyCode()==KeyEvent.KEYCODE_CALL){
+            Call c=current();
+            if(c!=null&&c.getState()==Call.STATE_RINGING){IncomingCallService.answerIncoming();return true;}
+            return true;
+        }
+        if(event.getAction()==KeyEvent.ACTION_DOWN){
+            int code=event.getKeyCode();char d=0;
+            if(code>=KeyEvent.KEYCODE_0&&code<=KeyEvent.KEYCODE_9)d=(char)('0'+code-KeyEvent.KEYCODE_0);
+            else if(code==KeyEvent.KEYCODE_STAR)d='*'; else if(code==KeyEvent.KEYCODE_POUND)d='#';
+            if(d!=0){Call c=current();if(c!=null&&c.getState()==Call.STATE_ACTIVE){c.playDtmfTone(d);handler.postDelayed(()->{try{c.stopDtmfTone();}catch(Exception ignored){}},160);return true;}}
+        }
+        return super.dispatchKeyEvent(event);
+    }
     @Override protected void onPause(){handler.removeCallbacks(tick);super.onPause();}
     @Override protected void onDestroy(){handler.removeCallbacks(tick);if(open==this)open=null;super.onDestroy();}
 
@@ -63,7 +77,7 @@ public class InCallActivity extends Activity {
         controls.removeAllViews();
         if(state==Call.STATE_RINGING){
             Button decline=roundButton("דחה",Color.rgb(210,60,70));decline.setOnClickListener(v->end());
-            Button answer=roundButton("ענה",Ui.accent(this));answer.setOnClickListener(v->{Call c=current();if(c!=null)c.answer(0);});
+            Button answer=roundButton("ענה",Ui.accent(this));answer.setOnClickListener(v->{Call c=current();if(c!=null)c.answer(android.telecom.VideoProfile.STATE_AUDIO_ONLY);});
             controls.addView(decline,Ui.lp(125,58));controls.addView(answer,Ui.lp(125,58));
             return;
         }
