@@ -43,7 +43,7 @@ public class MainActivity extends Activity {
         if(event.getAction()==KeyEvent.ACTION_DOWN){
             int code=event.getKeyCode();
             if(code==KeyEvent.KEYCODE_CALL){
-                Call current=IncomingCallService.getCurrentCall();
+                android.telecom.Call current=IncomingCallService.getCurrentCall();
                 if(current!=null&&current.getState()==android.telecom.Call.STATE_RINGING){IncomingCallService.answerIncoming();return true;}
                 page=2;query="";if(globalSearch!=null)globalSearch.setText("");if(content!=null)showPage();return true;
             }
