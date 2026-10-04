@@ -28,6 +28,7 @@ public class MainActivity extends Activity {
     private String query="";
 
     @Override protected void onCreate(Bundle b){
+        setTheme(SettingsStore.dark(this) ? R.style.AppThemeDark : R.style.AppTheme);
         super.onCreate(b);
         applyBars();
         build();
