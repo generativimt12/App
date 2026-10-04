@@ -35,7 +35,7 @@ public class MainActivity extends Activity {
         build();
         handleDialIntent(getIntent());
         requestDataPermissions();
-        ContactIndex.refreshAsync(this);
+        ContactIndex.refreshAsync(this,()->{if(content!=null)showPage();});
     }
 
     @Override protected void onResume(){ super.onResume(); applyBars(); if(content!=null){if(getIntent().getBooleanExtra("open_recent",false)){page=2;getIntent().removeExtra("open_recent");}ContactIndex.refreshAsync(this);showPage();} }
@@ -68,15 +68,13 @@ public class MainActivity extends Activity {
         LinearLayout root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(18,14,18,8); root.setBackgroundColor(Ui.bg(this));
 
         LinearLayout top=new LinearLayout(this); top.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout brand=new LinearLayout(this); brand.setOrientation(LinearLayout.VERTICAL);
-        TextView title=Ui.text(this,"טלפון",28); title.setTypeface(null,1); brand.addView(title);
-        TextView sub=Ui.text(this,"חייגן אישי • צלצול עצמאי • פשוט",12); sub.setTextColor(Ui.muted(this)); brand.addView(sub);
-        top.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
-        Button settings=Ui.button(this,"⚙"); settings.setTextSize(21); settings.setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class))); top.addView(settings,Ui.lp(52,52));
+        TextView title=Ui.text(this,"PHONE",25); title.setTypeface(null,1); title.setLetterSpacing(.08f);
+        top.addView(title,new LinearLayout.LayoutParams(0,52,1));
+        Button settings=Ui.button(this,"⚙"); settings.setTextSize(19); settings.setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class))); top.addView(settings,Ui.lp(48,48));
         root.addView(top);
 
-        globalSearch=new EditText(this); globalSearch.setHint("חיפוש בכל הטלפון"); globalSearch.setSingleLine(); globalSearch.setTextSize(16); globalSearch.setTextColor(Ui.ink(this)); globalSearch.setHintTextColor(Ui.muted(this)); globalSearch.setPadding(18,0,18,0); globalSearch.setBackground(Ui.rounded(Ui.card(this),26));
-        LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,54);sp.setMargins(0,14,0,10);root.addView(globalSearch,sp);
+        globalSearch=new EditText(this); globalSearch.setHint("חיפוש"); globalSearch.setSingleLine(); globalSearch.setTextSize(16); globalSearch.setTextColor(Ui.ink(this)); globalSearch.setHintTextColor(Ui.muted(this)); globalSearch.setPadding(18,0,18,0); globalSearch.setBackground(Ui.rounded(Ui.card(this),24));
+        LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,52);sp.setMargins(0,6,0,8);root.addView(globalSearch,sp);
         globalSearch.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int c,int d){} public void onTextChanged(CharSequence s,int a,int b,int c){query=s.toString();showPage();} public void afterTextChanged(Editable e){}});
 
         content=new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
@@ -98,7 +96,7 @@ public class MainActivity extends Activity {
     private void updateNav(){for(int i=0;i<nav.getChildCount();i++){TextView t=(TextView)nav.getChildAt(i);t.setTextColor(i==page?Ui.accent(this):Ui.muted(this));}}
 
     private void showDialer(){
-        TextView h=Ui.text(this,"חייגן",24);h.setTypeface(null,1);content.addView(h);
+        TextView h=Ui.text(this,"חייג",22);h.setTypeface(null,1);content.addView(h);
         TextView hint=Ui.text(this,"מקשי הטלפון הפיזיים פועלים ישירות. אין צורך בלוח מקשים על המסך.",13);hint.setTextColor(Ui.muted(this));hint.setPadding(0,2,0,12);content.addView(hint);
         number=new EditText(this);number.setHint("מספר טלפון");number.setGravity(Gravity.CENTER);number.setTextSize(25);number.setTextColor(Ui.ink(this));number.setHintTextColor(Ui.muted(this));number.setSingleLine();number.setInputType(3);number.setShowSoftInputOnFocus(false);number.setBackground(Ui.rounded(Ui.card(this),26));
         LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,68);np.setMargins(0,4,0,12);content.addView(number,np);
