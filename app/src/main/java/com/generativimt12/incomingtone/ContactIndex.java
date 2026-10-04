@@ -73,8 +73,8 @@ public final class ContactIndex {
         return rankedContacts(c,q,"",limit);
     }
     public static List<ContactRow> favorites(Context c,int limit){
-        SQLiteDatabase d=db(c).getReadableDatabase();ArrayList<ContactRow> out=new ArrayList<>();Cursor cur=d.query("contacts",new String[]{"name","number","photo","favorite"},"favorite=1",null,null,null,"name COLLATE NOCASE ASC",""+Math.max(1,limit));
-        try{while(cur.moveToNext())out.add(new ContactRow(cur.getString(0),cur.getString(1),cur.getString(2),true));}finally{cur.close();}return out;
+        SQLiteDatabase d=db(c).getReadableDatabase();ArrayList<ContactRow> out=new ArrayList<>();Cursor cur=d.query("contacts",new String[]{"id","name","number","photo","favorite"},"favorite=1",null,null,null,"name COLLATE NOCASE ASC",""+Math.max(1,limit));
+        try{while(cur.moveToNext())out.add(new ContactRow(cur.getString(0),cur.getString(1),cur.getString(2),cur.getString(3),true));}finally{cur.close();}return out;
     }
     public static List<CallRow> calls(Context c,String q,int limit){
         SQLiteDatabase d=db(c).getReadableDatabase();ArrayList<CallRow> out=new ArrayList<>();String sel=null;String[] args=null;
@@ -89,7 +89,7 @@ public final class ContactIndex {
     private static ArrayList<ContactRow> rankedContacts(SQLiteDatabase d,String q,String digits,int limit){
         ArrayList<ContactRow> rows=new ArrayList<>();
         String nq=normalizeName(q), nd=normalize(digits);
-        Cursor cur=d.query("contacts",new String[]{"id","name","number","photo","favorite","name_norm"},null,null,null,null,null,"2500");
+        String nqLike=normalizeName(q),nd=normalize(digits);String sel="name_norm LIKE ? OR name LIKE ? OR number LIKE ? OR normalized LIKE ?";String[] args={"%"+nqLike+"%","%"+q+"%","%"+nd+"%","%"+nd+"%"};Cursor cur=d.query("contacts",new String[]{"id","name","number","photo","favorite","name_norm"},sel,args,null,null,null,"1200");
         try{
             while(cur.moveToNext()){
                 String name=cur.getString(1)==null?"":cur.getString(1), num=cur.getString(2)==null?"":cur.getString(2);
@@ -131,7 +131,7 @@ public final class ContactIndex {
         IndexDb(Context c){super(c,"incomingtone_index.db",null,2);}
         @Override public void onCreate(SQLiteDatabase d){
             d.execSQL("CREATE TABLE contacts(id TEXT PRIMARY KEY,name TEXT,name_norm TEXT,number TEXT,normalized TEXT,photo TEXT,favorite INTEGER)");
-            d.execSQL("CREATE INDEX idx_contacts_name ON contacts(name COLLATE NOCASE)");d.execSQL("CREATE INDEX idx_contacts_normalized ON contacts(normalized)");d.execSQL("CREATE INDEX idx_contacts_number ON contacts(number)");
+            d.execSQL("CREATE INDEX idx_contacts_name ON contacts(name COLLATE NOCASE)");d.execSQL("CREATE INDEX idx_contacts_name_norm ON contacts(name_norm)");d.execSQL("CREATE INDEX idx_contacts_normalized ON contacts(normalized)");d.execSQL("CREATE INDEX idx_contacts_number ON contacts(number)");
             d.execSQL("CREATE TABLE calls(_id INTEGER PRIMARY KEY,name TEXT,number TEXT,date INTEGER,type INTEGER,duration INTEGER)");
             d.execSQL("CREATE INDEX idx_calls_date ON calls(date DESC)");d.execSQL("CREATE INDEX idx_calls_name ON calls(name COLLATE NOCASE)");d.execSQL("CREATE INDEX idx_calls_number ON calls(number)");
             d.execSQL("CREATE TABLE meta(key TEXT PRIMARY KEY,value INTEGER)");
