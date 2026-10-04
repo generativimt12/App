@@ -35,6 +35,8 @@ public final class ContactIndex {
     private static final Object LOCK=new Object();
     private static volatile IndexDb db;
     private static volatile long lastRequest=0;
+    private static volatile List<ContactRow> memoryContacts=Collections.emptyList();
+    private static volatile long memoryContactsAt=0;
 
     private static IndexDb db(Context c){
         if(db==null)synchronized(LOCK){if(db==null)db=new IndexDb(c.getApplicationContext());}
@@ -127,11 +129,39 @@ public final class ContactIndex {
     }
 
     private static List<ContactRow> simpleContacts(Context c,int limit){
+        if(!memoryContacts.isEmpty() && System.currentTimeMillis()-memoryContactsAt<120000){
+            int max=Math.max(1,limit);
+            return new ArrayList<>(memoryContacts.subList(0,Math.min(max,memoryContacts.size())));
+        }
+        if(c.checkSelfPermission(Manifest.permission.READ_CONTACTS)==PackageManager.PERMISSION_GRANTED){
+            ArrayList<ContactRow> fresh=readContactsDirect(c,Math.max(1,limit));
+            if(!fresh.isEmpty()){
+                memoryContacts=Collections.unmodifiableList(fresh);
+                memoryContactsAt=System.currentTimeMillis();
+                return new ArrayList<>(fresh);
+            }
+        }
         SQLiteDatabase d=db(c).getReadableDatabase();
         ArrayList<ContactRow> out=new ArrayList<>();
         Cursor cur=d.query("contacts",new String[]{"id","name","number","photo","favorite"},null,null,null,null,"name COLLATE NOCASE ASC",""+Math.max(1,limit));
         try{while(cur.moveToNext())out.add(new ContactRow(cur.getString(0),cur.getString(1),cur.getString(2),cur.getString(3),cur.getInt(4)==1));}
         finally{cur.close();}
+        return out;
+    }
+
+    private static ArrayList<ContactRow> readContactsDirect(Context c,int limit){
+        ArrayList<ContactRow> out=new ArrayList<>();
+        Cursor cur=null;
+        try{
+            cur=c.getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                new String[]{ContactsContract.CommonDataKinds.Phone.CONTACT_ID,ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,ContactsContract.CommonDataKinds.Phone.NUMBER,ContactsContract.CommonDataKinds.Phone.PHOTO_URI,ContactsContract.CommonDataKinds.Phone.STARRED},
+                null,null,ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME+" COLLATE LOCALIZED ASC");
+            if(cur!=null)while(cur.moveToNext()&&out.size()<limit){
+                String id=cur.getString(0), name=cur.getString(1), num=cur.getString(2);
+                if(num==null)num="";
+                out.add(new ContactRow(id+"|"+num,name==null?"":name,num,cur.getString(3)==null?"":cur.getString(3),cur.getInt(4)==1));
+            }
+        }finally{if(cur!=null)cur.close();}
         return out;
     }
 
