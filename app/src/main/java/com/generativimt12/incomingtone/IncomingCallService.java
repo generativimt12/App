@@ -21,13 +21,13 @@ public class IncomingCallService extends InCallService {
         super.onCallAdded(call);
         call.registerCallback(new Call.Callback(){
             @Override public void onStateChanged(Call c,int state){
-                if(state==Call.STATE_RINGING){ringingCalls.add(c);startTone();showCallUi();}
+                if(state==Call.STATE_RINGING){ringingCalls.add(c);silenceSystemRinger();startTone();showCallUi();}
                 else if(state==Call.STATE_ACTIVE){ringingCalls.remove(c);stopTone();showCallUi();}
                 else if(state==Call.STATE_DISCONNECTED){ringingCalls.remove(c);stopTone();if(findActiveCall()==null)InCallActivity.finishIfOpen();}
                 else if(state==Call.STATE_DIALING||state==Call.STATE_CONNECTING){stopTone();showCallUi();}
             }
         },mainHandler);
-        if(call.getState()==Call.STATE_RINGING){ringingCalls.add(call);startTone();}
+        if(call.getState()==Call.STATE_RINGING){ringingCalls.add(call);silenceSystemRinger();startTone();}
         showCallUi();
     }
 
@@ -38,7 +38,20 @@ public class IncomingCallService extends InCallService {
     private Call findActiveCall(){for(Call c:getCalls()){int s=c.getState();if(s!=Call.STATE_DISCONNECTED&&s!=Call.STATE_DISCONNECTING)return c;}return null;}
     private void showCallUi(){mainHandler.post(()->{Call c=findActiveCall();if(c!=null){Intent i=new Intent(this,InCallActivity.class);i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);startActivity(i);}});}
 
-    private void startTone(){mainHandler.post(()->{if(!SettingsStore.toneEnabled(this))return;if(tonePlayer==null){tonePlayer=new TonePlayer(this);tonePlayer.start();}});}
+    private void silenceSystemRinger(){
+        try{
+            TelecomManager tm=getSystemService(TelecomManager.class);
+            if(tm!=null)tm.silenceRinger();
+        }catch(Exception ignored){}
+    }
+
+    private void startTone(){
+        if(!SettingsStore.toneEnabled(this))return;
+        if(tonePlayer==null){
+            tonePlayer=new TonePlayer(this);
+            try{tonePlayer.start();}catch(Exception e){tonePlayer=null;}
+        }
+    }
     private void stopTone(){mainHandler.post(()->{if(tonePlayer!=null){tonePlayer.stop();tonePlayer=null;}});}
 
     public static void answerIncoming(){if(instance!=null){Call c=instance.findRingingCall();if(c!=null)c.answer(VideoProfile.STATE_AUDIO_ONLY);}}
