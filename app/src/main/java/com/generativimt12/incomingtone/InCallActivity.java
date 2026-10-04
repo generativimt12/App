@@ -33,8 +33,8 @@ public class InCallActivity extends Activity {
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
                 WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         open=this;
-        setFocusableInTouchMode(true);
-        requestFocus();
+        getWindow().getDecorView().setFocusableInTouchMode(true);
+        getWindow().getDecorView().requestFocus();
         applyBars();build();refresh();
     }
     @Override protected void onPostResume(){super.onPostResume();requestFocus();}
