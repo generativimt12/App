@@ -60,16 +60,17 @@ public class IncomingCallService extends InCallService {
         if(instance==null)return;
         Call c=instance.findRingingCall();
         if(c==null)return;
-        try{c.answer(VideoProfile.STATE_AUDIO_ONLY);}catch(Exception ignored){}
+        boolean accepted=false;
+        try{
+            if(android.os.Build.VERSION.SDK_INT>=26 && instance.checkSelfPermission(android.Manifest.permission.ANSWER_PHONE_CALLS)==android.content.pm.PackageManager.PERMISSION_GRANTED){
+                TelecomManager tm=instance.getSystemService(TelecomManager.class);
+                if(tm!=null){tm.acceptRingingCall();accepted=true;}
+            }
+        }catch(Exception ignored){}
+        if(!accepted){try{c.answer(VideoProfile.STATE_AUDIO_ONLY);}catch(Exception ignored){}}
         instance.mainHandler.postDelayed(()->{
-            try{
-                Call still=instance.findRingingCall();
-                if(still!=null){
-                    TelecomManager tm=instance.getSystemService(TelecomManager.class);
-                    if(tm!=null)tm.acceptRingingCall();
-                }
-            }catch(Exception ignored){}
-        },250);
+            try{Call still=instance.findRingingCall();if(still!=null)still.answer(VideoProfile.STATE_AUDIO_ONLY);}catch(Exception ignored){}
+        },180);
     }
     public static void openRecentCalls(Context context){Intent i=new Intent(context,MainActivity.class);i.putExtra("open_recent",true);i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);context.startActivity(i);}
     public static void toggleMute(){if(instance!=null)try{instance.setMuted(!instance.isMutedNow());}catch(Exception ignored){}}
