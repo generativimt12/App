@@ -26,7 +26,14 @@ public class IncomingCallService extends InCallService {
             @Override public void onStateChanged(Call c,int state){
                 if(state==Call.STATE_RINGING){ringingCalls.add(c);silenceSystemRinger();startTone();showCallUi();updateCallNotification(c,false);}
                 else if(state==Call.STATE_ACTIVE){ringingCalls.remove(c);stopTone();showCallUi();updateCallNotification(c,true);}
-                else if(state==Call.STATE_DISCONNECTED){ringingCalls.remove(c);stopTone();cancelCallNotification();if(findActiveCall()==null)InCallActivity.finishIfOpen();}
+                else if(state==Call.STATE_DISCONNECTED){
+                    ringingCalls.remove(c);
+                    if(findRingingCall()!=null)startTone(); else stopTone();
+                    Call remaining=findActiveCall();
+                    if(remaining!=null)updateCallNotification(remaining,remaining.getState()==Call.STATE_ACTIVE);
+                    else cancelCallNotification();
+                    if(remaining==null)InCallActivity.finishIfOpen();
+                }
                 else if(state==Call.STATE_DIALING||state==Call.STATE_CONNECTING){stopTone();showCallUi();updateCallNotification(c,false);}
             }
         },mainHandler);
@@ -34,11 +41,41 @@ public class IncomingCallService extends InCallService {
         showCallUi();
     }
 
-    @Override public void onCallRemoved(Call call){ringingCalls.remove(call);stopTone();cancelCallNotification();if(findActiveCall()==null)InCallActivity.finishIfOpen();super.onCallRemoved(call);}
+    @Override public void onCallRemoved(Call call){
+        ringingCalls.remove(call);
+        if(findRingingCall()!=null)startTone(); else stopTone();
+        Call remaining=findActiveCall();
+        if(remaining!=null)updateCallNotification(remaining,remaining.getState()==Call.STATE_ACTIVE); else cancelCallNotification();
+        if(remaining==null)InCallActivity.finishIfOpen();
+        super.onCallRemoved(call);
+    }
     @Override public void onBringToForeground(boolean showDialpad){showCallUi();}
     @Override public void onSilenceRinger(){silenceSystemRinger(); /* keep independent ringtone alive */}
 
-    private Call findActiveCall(){for(Call c:getCalls()){int s=c.getState();if(s!=Call.STATE_DISCONNECTED&&s!=Call.STATE_DISCONNECTING)return c;}return null;}
+    private Call findActiveCall(){
+        Call ringing=findRingingCall(); if(ringing!=null)return ringing;
+        for(Call c:getCalls()){int s=c.getState();if(s==Call.STATE_ACTIVE)return c;}
+        for(Call c:getCalls()){int s=c.getState();if(s==Call.STATE_HOLDING||s==Call.STATE_DIALING||s==Call.STATE_CONNECTING)return c;}
+        return null;
+    }
+    public int liveCallCount(){
+        int n=0; try{for(Call c:getCalls()){int s=c.getState();if(s!=Call.STATE_DISCONNECTED&&s!=Call.STATE_DISCONNECTING)n++;}}catch(Exception ignored){} return n;
+    }
+    public static boolean hasWaitingCall(){
+        return instance!=null && instance.countRinging()>0 && instance.hasActiveCall();
+    }
+    private int countRinging(){int n=0;for(Call c:getCalls())if(c.getState()==Call.STATE_RINGING)n++;return n;}
+    private boolean hasActiveCall(){for(Call c:getCalls())if(c.getState()==Call.STATE_ACTIVE)return true;return false;}
+    public static void answerWaitingAndHold(){
+        if(instance==null)return;
+        Call active=null, waiting=null;
+        for(Call c:instance.getCalls()){
+            if(c.getState()==Call.STATE_ACTIVE)active=c;
+            else if(c.getState()==Call.STATE_RINGING)waiting=c;
+        }
+        try{if(active!=null)active.hold();}catch(Exception ignored){}
+        try{if(waiting!=null)waiting.answer(VideoProfile.STATE_AUDIO_ONLY);}catch(Exception ignored){}
+    }
     private void showCallUi(){mainHandler.post(()->{Call c=findActiveCall();if(c!=null){Intent i=new Intent(this,InCallActivity.class);i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);startActivity(i);}});}
 
     private static final int CALL_NOTIFICATION_ID=707;
@@ -112,6 +149,7 @@ public class IncomingCallService extends InCallService {
 
     private void startTone(){
         if(!SettingsStore.toneEnabled(this))return;
+        if(findRingingCall()==null)return;
         if(tonePlayer==null){
             tonePlayer=new TonePlayer(this,contactToneUriForRinging());
             try{tonePlayer.start();}catch(Exception e){tonePlayer=null;}
@@ -135,6 +173,7 @@ public class IncomingCallService extends InCallService {
             try{Call still=instance.findRingingCall();if(still!=null)still.answer(VideoProfile.STATE_AUDIO_ONLY);}catch(Exception ignored){}
         },180);
     }
+    public static void answerWaiting(){answerWaitingAndHold();}
     public static void openRecentCalls(Context context){Intent i=new Intent(context,MainActivity.class);i.putExtra("open_recent",true);i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);context.startActivity(i);}
     public static void toggleMute(){if(instance!=null)try{instance.setMuted(!instance.isMutedNow());}catch(Exception ignored){}}
     public static void cycleAudioRoute(){if(instance!=null)instance.cycleAudioRouteInternal();}
