@@ -95,10 +95,25 @@ public class IncomingCallService extends InCallService {
         }catch(Exception ignored){}
     }
 
+    private String contactToneUriForRinging(){
+        try{
+            Call c=findRingingCall();if(c==null||checkSelfPermission(android.Manifest.permission.READ_CONTACTS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)return"";
+            Uri h=c.getDetails().getHandle();String num=h==null?"":h.getSchemeSpecificPart();if(num.isEmpty())return"";
+            android.database.Cursor cur=getContentResolver().query(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                new String[]{android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID},android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER+" LIKE ?",new String[]{"%"+num.replace("-","")+"%"},null);
+            String id="";try{if(cur!=null&&cur.moveToFirst())id=cur.getString(0);}finally{if(cur!=null)cur.close();}
+            if(id.isEmpty())return"";
+            android.database.Cursor cc=getContentResolver().query(Uri.withAppendedPath(android.provider.ContactsContract.Contacts.CONTENT_URI,id),
+                new String[]{android.provider.ContactsContract.Contacts.CUSTOM_RINGTONE},null,null,null);
+            try{if(cc!=null&&cc.moveToFirst()){String u=cc.getString(0);return u==null?"":u;}}finally{if(cc!=null)cc.close();}
+        }catch(Exception ignored){}
+        return"";
+    }
+
     private void startTone(){
         if(!SettingsStore.toneEnabled(this))return;
         if(tonePlayer==null){
-            tonePlayer=new TonePlayer(this);
+            tonePlayer=new TonePlayer(this,contactToneUriForRinging());
             try{tonePlayer.start();}catch(Exception e){tonePlayer=null;}
         }
     }
@@ -173,11 +188,11 @@ public class IncomingCallService extends InCallService {
     @Override public void onDestroy(){stopTone();instance=null;super.onDestroy();}
 
     private static final class TonePlayer {
-        private final Context context; private MediaPlayer media; private AudioTrack track; private Thread thread; private volatile boolean running; private Vibrator vibrator;
-        TonePlayer(Context c){context=c.getApplicationContext();}
+        private final Context context; private final String preferredUri; private MediaPlayer media; private AudioTrack track; private Thread thread; private volatile boolean running; private Vibrator vibrator;
+        TonePlayer(Context c,String preferred){context=c.getApplicationContext();preferredUri=preferred==null?"":preferred;}
 
         void start(){
-            String uri=SettingsStore.toneUri(context);
+            String uri=preferredUri!=null&&!preferredUri.isEmpty()?preferredUri:SettingsStore.toneUri(context);
             if(uri!=null&&!uri.isEmpty()){startFile(Uri.parse(uri));return;}
             startGenerated();
         }
