@@ -118,7 +118,7 @@ public class MainActivity extends Activity {
         TextView hint=Ui.text(this,"אנשים שסימנת כמועדפים",13);hint.setTextColor(Ui.muted(this));hint.setPadding(0,2,0,12);content.addView(hint);
         if(checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED){content.addView(info("אשר הרשאת אנשי קשר כדי לראות מועדפים."));return;}
         LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);content.addView(list);
-        for(ContactIndex.ContactRow r:ContactIndex.favorites(this,500))addPersonCard(list,r.name,r.number,r.photo,r.favorite,r.id);
+        for(ContactIndex.ContactRow r:ContactIndex.favorites(this,500))addPersonCard(list,r.name,r.number,r.photo,r.favorite,r.contactId());
         if(list.getChildCount()==0)list.addView(info("אין עדיין מועדפים. סמן אנשי קשר כמועדפים באפליקציית אנשי הקשר."));
     }
 
