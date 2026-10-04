@@ -11,6 +11,7 @@ import android.telecom.Call;
 import android.telecom.CallAudioState;
 import android.view.*;
 import android.widget.*;
+import android.view.animation.AlphaAnimation;
 import java.util.*;
 
 public class InCallActivity extends Activity {
@@ -78,7 +79,7 @@ public class InCallActivity extends Activity {
 
     private void refresh(){
         Call c=current();if(c==null){finish();return;}
-        int state=c.getState();String n=getNumber(c);name.setText(findName(n));number.setText(n);status.setText(stateText(state));
+        int state=c.getState();String n=getNumber(c);name.setText(findName(n));number.setText(n);status.setText(stateText(state));status.setTextColor(state==Call.STATE_RINGING?Ui.accent(this):(state==Call.STATE_ACTIVE?Ui.accent(this):Ui.muted(this)));
         loadPhoto(n);
         if(state==Call.STATE_ACTIVE){if(activeAt==0)activeAt=System.currentTimeMillis();timer.setText(formatElapsed(System.currentTimeMillis()-activeAt));}
         else {activeAt=0;timer.setText("");}
@@ -109,6 +110,7 @@ public class InCallActivity extends Activity {
         if(state==Call.STATE_RINGING){
             controls.addView(slideAction("ענה לשיחה  →",Ui.accent(this),true),new LinearLayout.LayoutParams(-1,Ui.dp(this,76)));
             controls.addView(slideAction("דחייה  →",Color.rgb(210,60,70),false),new LinearLayout.LayoutParams(-1,Ui.dp(this,76)));
+            animateControls();
             return;
         }
         Button mute=roundButton(isMuted()?"מושתק":"השתק",isMuted()?Ui.accent(this):Ui.card(this));mute.setOnClickListener(v->{IncomingCallService.toggleMute();refresh();});
