@@ -56,7 +56,21 @@ public class IncomingCallService extends InCallService {
     }
     private void stopTone(){mainHandler.post(()->{if(tonePlayer!=null){tonePlayer.stop();tonePlayer=null;}});}
 
-    public static void answerIncoming(){if(instance!=null){Call c=instance.findRingingCall();if(c!=null)c.answer(VideoProfile.STATE_AUDIO_ONLY);}}
+    public static void answerIncoming(){
+        if(instance==null)return;
+        Call c=instance.findRingingCall();
+        if(c==null)return;
+        try{c.answer(VideoProfile.STATE_AUDIO_ONLY);}catch(Exception ignored){}
+        instance.mainHandler.postDelayed(()->{
+            try{
+                Call still=instance.findRingingCall();
+                if(still!=null){
+                    TelecomManager tm=instance.getSystemService(TelecomManager.class);
+                    if(tm!=null)tm.acceptRingingCall();
+                }
+            }catch(Exception ignored){}
+        },250);
+    }
     public static void openRecentCalls(Context context){Intent i=new Intent(context,MainActivity.class);i.putExtra("open_recent",true);i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);context.startActivity(i);}
     public static void toggleMute(){if(instance!=null)try{instance.setMuted(!instance.isMutedNow());}catch(Exception ignored){}}
     public static void cycleAudioRoute(){if(instance!=null)instance.cycleAudioRouteInternal();}
