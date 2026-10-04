@@ -1,6 +1,7 @@
 package com.generativimt12.incomingtone;
 
 import android.content.*;
+import android.app.*;
 import android.media.*;
 import android.net.Uri;
 import android.os.*;
@@ -16,30 +17,77 @@ public class IncomingCallService extends InCallService {
 
     public static IncomingCallService getInstance(){return instance;}
     public static Call getCurrentCall(){return instance==null?null:instance.findActiveCall();}
-    @Override public void onCreate(){super.onCreate();instance=this;}
+    @Override public void onCreate(){super.onCreate();instance=this;createCallChannel();}
 
     @Override public void onAvailableCallEndpointsChanged(java.util.List<CallEndpoint> endpoints){availableEndpoints=endpoints==null?java.util.Collections.emptyList():new java.util.ArrayList<>(endpoints);super.onAvailableCallEndpointsChanged(endpoints);}
     @Override public void onCallAdded(Call call){
         super.onCallAdded(call);
         call.registerCallback(new Call.Callback(){
             @Override public void onStateChanged(Call c,int state){
-                if(state==Call.STATE_RINGING){ringingCalls.add(c);silenceSystemRinger();startTone();showCallUi();}
-                else if(state==Call.STATE_ACTIVE){ringingCalls.remove(c);stopTone();showCallUi();}
-                else if(state==Call.STATE_DISCONNECTED){ringingCalls.remove(c);stopTone();if(findActiveCall()==null)InCallActivity.finishIfOpen();}
-                else if(state==Call.STATE_DIALING||state==Call.STATE_CONNECTING){stopTone();showCallUi();}
+                if(state==Call.STATE_RINGING){ringingCalls.add(c);silenceSystemRinger();startTone();showCallUi();updateCallNotification(c,false);}
+                else if(state==Call.STATE_ACTIVE){ringingCalls.remove(c);stopTone();showCallUi();updateCallNotification(c,true);}
+                else if(state==Call.STATE_DISCONNECTED){ringingCalls.remove(c);stopTone();cancelCallNotification();if(findActiveCall()==null)InCallActivity.finishIfOpen();}
+                else if(state==Call.STATE_DIALING||state==Call.STATE_CONNECTING){stopTone();showCallUi();updateCallNotification(c,false);}
             }
         },mainHandler);
-        if(call.getState()==Call.STATE_RINGING){ringingCalls.add(call);silenceSystemRinger();startTone();}
+        if(call.getState()==Call.STATE_RINGING){ringingCalls.add(call);silenceSystemRinger();startTone();updateCallNotification(call,false);}
         showCallUi();
     }
 
-    @Override public void onCallRemoved(Call call){ringingCalls.remove(call);stopTone();if(findActiveCall()==null)InCallActivity.finishIfOpen();super.onCallRemoved(call);}
+    @Override public void onCallRemoved(Call call){ringingCalls.remove(call);stopTone();cancelCallNotification();if(findActiveCall()==null)InCallActivity.finishIfOpen();super.onCallRemoved(call);}
     @Override public void onBringToForeground(boolean showDialpad){showCallUi();}
     @Override public void onSilenceRinger(){silenceSystemRinger(); /* keep independent ringtone alive */}
 
     private Call findActiveCall(){for(Call c:getCalls()){int s=c.getState();if(s!=Call.STATE_DISCONNECTED&&s!=Call.STATE_DISCONNECTING)return c;}return null;}
     private void showCallUi(){mainHandler.post(()->{Call c=findActiveCall();if(c!=null){Intent i=new Intent(this,InCallActivity.class);i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);startActivity(i);}});}
 
+    private static final int CALL_NOTIFICATION_ID=707;
+    private static final String CALL_CHANNEL="active_call";
+    private void createCallChannel(){
+        if(android.os.Build.VERSION.SDK_INT>=26){
+            NotificationManager nm=getSystemService(NotificationManager.class);
+            if(nm!=null){NotificationChannel ch=new NotificationChannel(CALL_CHANNEL,"שיחות",NotificationManager.IMPORTANCE_HIGH);ch.setDescription("שיחה נכנסת ושיחה פעילה");ch.setSound(null,null);nm.createNotificationChannel(ch);}
+        }
+    }
+    private void updateCallNotification(Call call,boolean active){
+        try{
+            if(android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)return;
+            String num="";try{Uri u=call.getDetails().getHandle();num=u==null?"":u.getSchemeSpecificPart();}catch(Exception ignored){}
+            String who=resolveDisplayName(num);
+            Intent content=new Intent(this,InCallActivity.class);content.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent contentPi=PendingIntent.getActivity(this,708,content,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+            Intent hang=new Intent(this,CallButtonActivity.class);hang.putExtra("call_action","hangup");
+            PendingIntent hangPi=PendingIntent.getActivity(this,709,hang,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+            Notification.Builder b=new Notification.Builder(this,android.os.Build.VERSION.SDK_INT>=26?CALL_CHANNEL:"");
+            b.setSmallIcon(R.drawable.ic_phone).setContentTitle(who).setContentText(active?"שיחה פעילה":"שיחה נכנסת").setContentIntent(contentPi).setOngoing(true).setCategory(Notification.CATEGORY_CALL).setWhen(active?call.getDetails().getConnectTimeMillis():System.currentTimeMillis()).setShowWhen(true);
+            if(android.os.Build.VERSION.SDK_INT>=31){
+                Person person=new Person.Builder().setName(who).setImportant(true).build();
+                if(active){
+                    b.setStyle(Notification.CallStyle.forOngoingCall(person,hangPi));
+                    long started=call.getDetails().getConnectTimeMillis();if(started>0){b.setWhen(started);b.setUsesChronometer(true);}
+                }else{
+                    Intent answer=new Intent(this,CallButtonActivity.class);answer.putExtra("call_action","answer");
+                    Intent decline=new Intent(this,CallButtonActivity.class);decline.putExtra("call_action","decline");
+                    PendingIntent answerPi=PendingIntent.getActivity(this,710,answer,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+                    PendingIntent declinePi=PendingIntent.getActivity(this,711,decline,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+                    b.setStyle(Notification.CallStyle.forIncomingCall(person,declinePi,answerPi));
+                }
+            }
+            NotificationManager nm=getSystemService(NotificationManager.class);if(nm!=null)nm.notify(CALL_NOTIFICATION_ID,b.build());
+        }catch(Exception ignored){}
+    }
+    private String resolveDisplayName(String num){
+        if(num==null||num.isEmpty())return"טלפון";
+        try{
+            if(checkSelfPermission(android.Manifest.permission.READ_CONTACTS)==android.content.pm.PackageManager.PERMISSION_GRANTED){
+                android.database.Cursor c=getContentResolver().query(android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,new String[]{android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME},android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER+" LIKE ?",new String[]{"%"+num.replace("-","")+"%"},null);
+                try{if(c!=null&&c.moveToFirst()){String n=c.getString(0);if(n!=null&&!n.isEmpty())return n;}}finally{if(c!=null)c.close();}
+            }
+        }catch(Exception ignored){}
+        return num;
+    }
+    private void cancelCallNotification(){try{NotificationManager nm=getSystemService(NotificationManager.class);if(nm!=null)nm.cancel(CALL_NOTIFICATION_ID);}catch(Exception ignored){}}
+    
     private void silenceSystemRinger(){
         try{
             TelecomManager tm=getSystemService(TelecomManager.class);
