@@ -12,11 +12,13 @@ public class IncomingCallService extends InCallService {
     private TonePlayer tonePlayer;
     private final Handler mainHandler=new Handler(Looper.getMainLooper());
     private final Set<Call> ringingCalls=new HashSet<>();
+    private volatile java.util.List<CallEndpoint> availableEndpoints=java.util.Collections.emptyList();
 
     public static IncomingCallService getInstance(){return instance;}
     public static Call getCurrentCall(){return instance==null?null:instance.findActiveCall();}
     @Override public void onCreate(){super.onCreate();instance=this;}
 
+    @Override public void onAvailableCallEndpointsChanged(java.util.List<CallEndpoint> endpoints){availableEndpoints=endpoints==null?java.util.Collections.emptyList():new java.util.ArrayList<>(endpoints);super.onAvailableCallEndpointsChanged(endpoints);}
     @Override public void onCallAdded(Call call){
         super.onCallAdded(call);
         call.registerCallback(new Call.Callback(){
@@ -61,7 +63,7 @@ public class IncomingCallService extends InCallService {
     public void cycleAudioRouteInternal(){
         try{
             if(android.os.Build.VERSION.SDK_INT>=34){
-                java.util.List<CallEndpoint> eps=getAvailableCallEndpoints();
+                java.util.List<CallEndpoint> eps=availableEndpoints;
                 if(eps==null||eps.isEmpty())return;
                 CallEndpoint cur=getCurrentCallEndpoint(); int pos=-1;
                 for(int i=0;i<eps.size();i++)if(cur!=null&&eps.get(i).getEndpointType()==cur.getEndpointType()){pos=i;break;}
@@ -79,7 +81,7 @@ public class IncomingCallService extends InCallService {
             }else{
                 CallAudioState st=getCallAudioState(); if(st==null)return;
                 if((st.getSupportedRouteMask()&CallAudioState.ROUTE_BLUETOOTH)!=0){
-                    java.util.Set<android.bluetooth.BluetoothDevice> bt=st.getSupportedBluetoothDevices();
+                    java.util.Collection<android.bluetooth.BluetoothDevice> bt=st.getSupportedBluetoothDevices();
                     if(bt!=null&&!bt.isEmpty()){requestBluetoothAudio(bt.iterator().next());return;}
                 }
                 setAudioRoute(st.getRoute()==CallAudioState.ROUTE_SPEAKER?CallAudioState.ROUTE_EARPIECE:CallAudioState.ROUTE_SPEAKER);
