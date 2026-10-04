@@ -17,7 +17,7 @@ public class InCallActivity extends Activity {
     private static InCallActivity open;
     private TextView status, name, number, timer;
     private ImageView avatar;
-    private LinearLayout controls, keypad;
+    private LinearLayout controls, keypad, bottomBar;
     private long activeAt=0;
     private final Handler handler=new Handler(Looper.getMainLooper());
     private final Runnable tick=()->{refresh();handler.postDelayed(this::tickSafe,1000);};
@@ -71,6 +71,23 @@ public class InCallActivity extends Activity {
         else {activeAt=0;timer.setText("");}
         buildControls(state);
         if(SettingsStore.autoSpeaker(this)&&state==Call.STATE_ACTIVE) setSpeaker(true);
+    }
+
+    private void refreshBottomBar(){
+        if(bottomBar==null)return;
+        if(current()==null){bottomBar.setVisibility(View.GONE);return;}
+        bottomBar.setVisibility(View.VISIBLE);
+        TextView left=(TextView)bottomBar.getChildAt(0), center=(TextView)bottomBar.getChildAt(1), right=(TextView)bottomBar.getChildAt(2);
+        left.setText(isMuted()?"🎙\nמושתק":"🎙\nהשתקה");
+        left.setTextColor(isMuted()?Ui.accent(this):Ui.muted(this));
+        IncomingCallService svc=IncomingCallService.getInstance();
+        String route=svc==null?"טלפון":svc.currentRouteName();
+        String icon="◉";
+        if("Bluetooth".equals(route))icon="♢";
+        else if("רמקול".equals(route))icon="⌁";
+        right.setText(icon+"\n"+route);
+        right.setTextColor("טלפון".equals(route)?Ui.muted(this):Ui.accent(this));
+        center.setText(stateText(current().getState())+"  •  "+timer.getText());
     }
 
     private void buildControls(int state){
