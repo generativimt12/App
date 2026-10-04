@@ -33,7 +33,7 @@ public class IncomingCallService extends InCallService {
 
     @Override public void onCallRemoved(Call call){ringingCalls.remove(call);stopTone();if(findActiveCall()==null)InCallActivity.finishIfOpen();super.onCallRemoved(call);}
     @Override public void onBringToForeground(boolean showDialpad){showCallUi();}
-    @Override public void onSilenceRinger(){stopTone();}
+    @Override public void onSilenceRinger(){silenceSystemRinger(); /* keep independent ringtone alive */}
 
     private Call findActiveCall(){for(Call c:getCalls()){int s=c.getState();if(s!=Call.STATE_DISCONNECTED&&s!=Call.STATE_DISCONNECTING)return c;}return null;}
     private void showCallUi(){mainHandler.post(()->{Call c=findActiveCall();if(c!=null){Intent i=new Intent(this,InCallActivity.class);i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);startActivity(i);}});}
@@ -57,6 +57,35 @@ public class IncomingCallService extends InCallService {
     public static void answerIncoming(){if(instance!=null){Call c=instance.findRingingCall();if(c!=null)c.answer(VideoProfile.STATE_AUDIO_ONLY);}}
     public static void openRecentCalls(Context context){Intent i=new Intent(context,MainActivity.class);i.putExtra("open_recent",true);i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);context.startActivity(i);}
     public static void toggleMute(){if(instance!=null)try{instance.setMuted(!instance.isMutedNow());}catch(Exception ignored){}}
+    public static void cycleAudioRoute(){if(instance!=null)instance.cycleAudioRouteInternal();}
+    public void cycleAudioRouteInternal(){
+        try{
+            if(android.os.Build.VERSION.SDK_INT>=34){
+                java.util.List<CallEndpoint> eps=getAvailableCallEndpoints();
+                if(eps==null||eps.isEmpty())return;
+                CallEndpoint cur=getCurrentCallEndpoint(); int pos=-1;
+                for(int i=0;i<eps.size();i++)if(cur!=null&&eps.get(i).getEndpointType()==cur.getEndpointType()){pos=i;break;}
+                for(int step=1;step<=eps.size();step++){
+                    CallEndpoint e=eps.get((pos+step+eps.size())%eps.size());
+                    int t=e.getEndpointType();
+                    if(t==CallEndpoint.TYPE_EARPIECE||t==CallEndpoint.TYPE_SPEAKER||t==CallEndpoint.TYPE_BLUETOOTH){
+                        requestCallEndpointChange(e,getMainExecutor(),new android.os.OutcomeReceiver<Void,CallEndpointException>(){
+                            public void onResult(Void v){}
+                            public void onError(CallEndpointException e){}
+                        });
+                        return;
+                    }
+                }
+            }else{
+                CallAudioState st=getCallAudioState(); if(st==null)return;
+                if((st.getSupportedRouteMask()&CallAudioState.ROUTE_BLUETOOTH)!=0){
+                    java.util.Set<android.bluetooth.BluetoothDevice> bt=st.getSupportedBluetoothDevices();
+                    if(bt!=null&&!bt.isEmpty()){requestBluetoothAudio(bt.iterator().next());return;}
+                }
+                setAudioRoute(st.getRoute()==CallAudioState.ROUTE_SPEAKER?CallAudioState.ROUTE_EARPIECE:CallAudioState.ROUTE_SPEAKER);
+            }
+        }catch(Exception ignored){}
+    }
     public boolean isMutedNow(){try{return getCallAudioState()!=null&&getCallAudioState().isMuted();}catch(Exception e){return false;}}
     public void setSpeakerNow(boolean on){try{setAudioRoute(on?CallAudioState.ROUTE_SPEAKER:CallAudioState.ROUTE_EARPIECE);}catch(Exception ignored){}}
     public boolean isSpeakerNow(){try{return getCallAudioState()!=null&&getCallAudioState().getRoute()==CallAudioState.ROUTE_SPEAKER;}catch(Exception e){return false;}}
