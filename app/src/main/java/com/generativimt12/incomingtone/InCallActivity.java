@@ -67,6 +67,12 @@ public class InCallActivity extends Activity {
         keypad=buildKeypad();keypad.setVisibility(View.GONE);body.addView(keypad);
         scroll.addView(body);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
 
+        bottomBar=new LinearLayout(this);bottomBar.setGravity(Gravity.CENTER);bottomBar.setPadding(4,8,4,0);
+        TextView mute=bottomAction("🎙","השתקה"), route=bottomAction("◉","טלפון"), center=bottomAction("","—");
+        bottomBar.addView(mute,Ui.weight());bottomBar.addView(center,Ui.weight());bottomBar.addView(route,Ui.weight());
+        mute.setOnClickListener(v->{IncomingCallService.toggleMute();refresh();});
+        route.setOnClickListener(v->{IncomingCallService.cycleAudioRoute();refresh();});
+        root.addView(bottomBar,new LinearLayout.LayoutParams(-1,72));
         setContentView(root);
     }
 
@@ -77,7 +83,7 @@ public class InCallActivity extends Activity {
         if(state==Call.STATE_ACTIVE){if(activeAt==0)activeAt=System.currentTimeMillis();timer.setText(formatElapsed(System.currentTimeMillis()-activeAt));}
         else {activeAt=0;timer.setText("");}
         buildControls(state);
-        if(SettingsStore.autoSpeaker(this)&&state==Call.STATE_ACTIVE) setSpeaker(true);
+        if(SettingsStore.autoSpeaker(this)&&state==Call.STATE_ACTIVE) setSpeaker(true);\n        refreshBottomBar();
     }
 
     private void refreshBottomBar(){
@@ -101,7 +107,7 @@ public class InCallActivity extends Activity {
         controls.removeAllViews();
         if(state==Call.STATE_RINGING){
             Button decline=roundButton("דחה",Color.rgb(210,60,70));decline.setOnClickListener(v->end());
-            Button answer=roundButton("ענה",Ui.accent(this));answer.setOnClickListener(v->{Call c=current();if(c!=null)c.answer(android.telecom.VideoProfile.STATE_AUDIO_ONLY);});
+            Button answer=roundButton("ענה",Ui.accent(this));answer.setOnClickListener(v->IncomingCallService.answerIncoming());
             controls.addView(decline,Ui.lp(125,58));controls.addView(answer,Ui.lp(125,58));
             return;
         }
@@ -110,6 +116,12 @@ public class InCallActivity extends Activity {
         Button pad=roundButton(keypad.getVisibility()==View.VISIBLE?"הסתר לוח":"לוח מקשים",Ui.card(this));pad.setOnClickListener(v->{keypad.setVisibility(keypad.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE);});
         controls.addView(mute,Ui.lp(112,56));controls.addView(speaker,Ui.lp(112,56));controls.addView(pad,Ui.lp(126,56));
         LinearLayout bottom=new LinearLayout(this);bottom.setGravity(Gravity.CENTER);Button end=roundButton("סיום שיחה",Color.rgb(210,60,70));end.setTextColor(Color.WHITE);end.setOnClickListener(v->end());bottom.addView(end,Ui.lp(170,58));controls.addView(bottom);
+    }
+
+    private TextView bottomAction(String icon,String label){
+        TextView t=Ui.text(this,icon+"\n"+label,12);
+        t.setGravity(Gravity.CENTER);t.setPadding(4,4,4,4);t.setTextColor(Ui.muted(this));
+        return t;
     }
 
     private Button roundButton(String s,int color){Button b=Ui.button(this,s);b.setTextColor(color==Ui.card(this)?Ui.ink(this):Color.WHITE);b.setBackground(Ui.rounded(color,30));b.setTextSize(14);return b;}
