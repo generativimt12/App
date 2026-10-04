@@ -248,7 +248,7 @@ public final class ContactIndex {
     }
 
     private static int fuzzy(String a,String b){
-        if(a.length()>80||b.length()>40)return99;
+        if(a.length()>80||b.length()>40)return 99;
         int[] prev=new int[b.length()+1];
         for(int j=0;j<=b.length();j++)prev[j]=j;
         for(int i=1;i<=a.length();i++){
