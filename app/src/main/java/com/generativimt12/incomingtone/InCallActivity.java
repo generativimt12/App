@@ -25,7 +25,7 @@ public class InCallActivity extends Activity {
 
     public static void finishIfOpen(){if(open!=null)open.runOnUiThread(()->{open.finish();open=null;});}
 
-    @Override protected void onCreate(Bundle b){super.onCreate(b);open=this;applyBars();build();refresh();}
+    @Override protected void onCreate(Bundle b){setTheme(SettingsStore.dark(this) ? R.style.AppThemeDark : R.style.AppTheme);super.onCreate(b);open=this;applyBars();build();refresh();}
     @Override protected void onResume(){super.onResume();refresh();handler.removeCallbacks(tick);handler.postDelayed(tick,400);}
     @Override protected void onPause(){handler.removeCallbacks(tick);super.onPause();}
     @Override protected void onDestroy(){handler.removeCallbacks(tick);if(open==this)open=null;super.onDestroy();}
