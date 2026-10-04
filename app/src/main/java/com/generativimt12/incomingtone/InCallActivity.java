@@ -28,9 +28,16 @@ public class InCallActivity extends Activity {
     @Override protected void onCreate(Bundle b){setTheme(SettingsStore.dark(this) ? R.style.AppThemeDark : R.style.AppTheme);super.onCreate(b);open=this;applyBars();build();refresh();}
     @Override protected void onResume(){super.onResume();refresh();handler.removeCallbacks(tick);handler.postDelayed(tick,400);}
     @Override public boolean dispatchKeyEvent(KeyEvent event){
-        if(event.getAction()==KeyEvent.ACTION_DOWN && event.getKeyCode()==KeyEvent.KEYCODE_CALL){
+        if(event.getAction()==KeyEvent.ACTION_DOWN &&
+                (event.getKeyCode()==KeyEvent.KEYCODE_CALL ||
+                 event.getKeyCode()==KeyEvent.KEYCODE_ENTER ||
+                 event.getKeyCode()==KeyEvent.KEYCODE_DPAD_CENTER ||
+                 event.getKeyCode()==KeyEvent.KEYCODE_HEADSETHOOK)){
             Call c=current();
-            if(c!=null&&c.getState()==Call.STATE_RINGING){IncomingCallService.answerIncoming();return true;}
+            if(c!=null&&c.getState()==Call.STATE_RINGING){
+                IncomingCallService.answerIncoming();
+                return true;
+            }
             return true;
         }
         if(event.getAction()==KeyEvent.ACTION_DOWN){
