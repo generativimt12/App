@@ -11,19 +11,29 @@ public final class Ui {
     private Ui() {}
 
     public static int accent(Context c) {
-        int[] colors = {Color.rgb(55, 105, 245), Color.rgb(124, 78, 220), Color.rgb(12, 155, 112), Color.rgb(232, 95, 71), Color.rgb(214, 137, 25)};
+        int[] colors = {Color.rgb(91, 79, 255), Color.rgb(157, 92, 255), Color.rgb(45, 111, 255), Color.rgb(40, 197, 255), Color.rgb(209, 102, 255)};
         return colors[Math.max(0, Math.min(colors.length - 1, SettingsStore.accent(c)))];
     }
 
-    public static int bg(Context c) { return SettingsStore.dark(c) ? Color.rgb(16,18,22) : Color.rgb(247,248,252); }
-    public static int card(Context c) { return SettingsStore.dark(c) ? Color.rgb(28,31,37) : Color.WHITE; }
+    public static int bg(Context c) { return SettingsStore.dark(c) ? Color.rgb(8,10,18) : Color.rgb(244,246,252); }
+    public static int card(Context c) { return SettingsStore.dark(c) ? Color.rgb(28,30,43) : Color.rgb(255,255,255); }
     public static int ink(Context c) { return SettingsStore.dark(c) ? Color.rgb(244,246,250) : Color.rgb(27,30,37); }
-    public static int muted(Context c) { return SettingsStore.dark(c) ? Color.rgb(166,172,185) : Color.rgb(103,109,123); }
+    public static int muted(Context c) { return SettingsStore.dark(c) ? Color.rgb(172,176,195) : Color.rgb(94,99,116); }
     public static int soft(Context c) {
         int a = accent(c), r=Color.red(a), g=Color.green(a), b=Color.blue(a);
         return Color.rgb((r+255)/2,(g+255)/2,(b+255)/2);
     }
 
+    public static GradientDrawable glass(Context c, float radius){
+        GradientDrawable d=new GradientDrawable();
+        int fill=SettingsStore.dark(c)?0x2AFFFFFF:0x70FFFFFF;
+        d.setColor(fill);
+        d.setCornerRadius(radius);
+        d.setStroke(1,SettingsStore.dark(c)?0x35FFFFFF:0x9AFFFFFF);
+        return d;
+    }
+
+    public static int dp(Context c,float v){return (int)(v*c.getResources().getDisplayMetrics().density+0.5f);}
     public static GradientDrawable rounded(int color, float radius) {
         GradientDrawable d = new GradientDrawable();
         d.setColor(color); d.setCornerRadius(radius); return d;
@@ -35,7 +45,7 @@ public final class Ui {
 
     public static Button button(Context c, String label) {
         Button b = new Button(c); b.setText(label); b.setAllCaps(false); b.setTextSize(14);
-        b.setTextColor(ink(c)); b.setBackground(rounded(card(c), 28)); b.setMinHeight(0); b.setMinWidth(0);
+        b.setTextColor(ink(c)); b.setBackground(glass(c, 28)); b.setMinHeight(0); b.setMinWidth(0);
         return b;
     }
 
