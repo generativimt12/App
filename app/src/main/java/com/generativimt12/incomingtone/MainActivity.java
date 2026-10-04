@@ -36,8 +36,24 @@ public class MainActivity extends Activity {
         requestDataPermissions();
     }
 
-    @Override protected void onResume(){ super.onResume(); applyBars(); if(content!=null) showPage(); }
-    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);handleDialIntent(i);}
+    @Override protected void onResume(){ super.onResume(); applyBars(); if(content!=null){if(getIntent().getBooleanExtra("open_recent",false)){page=2;getIntent().removeExtra("open_recent");}showPage();} }
+    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);if(i!=null&&i.getBooleanExtra("open_recent",false))page=2;handleDialIntent(i);if(content!=null)showPage();}
+    @Override public boolean dispatchKeyEvent(KeyEvent event){
+        if(event.getAction()==KeyEvent.ACTION_DOWN){
+            int code=event.getKeyCode();
+            if(code==KeyEvent.KEYCODE_CALL){
+                Call current=IncomingCallService.getCurrentCall();
+                if(current!=null&&current.getState()==android.telecom.Call.STATE_RINGING){IncomingCallService.answerIncoming();return true;}
+                page=2;query="";if(globalSearch!=null)globalSearch.setText("");if(content!=null)showPage();return true;
+            }
+            String digit=null;
+            if(code>=KeyEvent.KEYCODE_0&&code<=KeyEvent.KEYCODE_9) digit=String.valueOf(code-KeyEvent.KEYCODE_0);
+            else if(code==KeyEvent.KEYCODE_STAR) digit="*";
+            else if(code==KeyEvent.KEYCODE_POUND) digit="#";
+            if(digit!=null&&number!=null&&number.hasFocus()){number.append(digit);return true;}
+        }
+        return super.dispatchKeyEvent(event);
+    }
 
     private void applyBars(){
         boolean dark=SettingsStore.dark(this);
@@ -81,17 +97,15 @@ public class MainActivity extends Activity {
 
     private void showDialer(){
         TextView h=Ui.text(this,"חייגן",24);h.setTypeface(null,1);content.addView(h);
-        TextView hint=Ui.text(this,"הקלד מספר והתקשר בלחיצה אחת",13);hint.setTextColor(Ui.muted(this));hint.setPadding(0,2,0,10);content.addView(hint);
-        number=new EditText(this);number.setHint("מספר טלפון");number.setGravity(Gravity.CENTER);number.setTextSize(23);number.setTextColor(Ui.ink(this));number.setHintTextColor(Ui.muted(this));number.setSingleLine();number.setInputType(3);number.setBackground(Ui.rounded(Ui.card(this),26));
-        LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,62);np.setMargins(0,0,0,7);content.addView(number,np);
-
-        String[][] keys={{"1","2","3"},{"4","5","6"},{"7","8","9"},{"*","0","#"}};
-        for(String[] row:keys){LinearLayout line=new LinearLayout(this);line.setGravity(Gravity.CENTER);for(String k:row){Button b=Ui.button(this,k);b.setTextSize(22);b.setOnClickListener(v->number.append(((Button)v).getText()));LinearLayout.LayoutParams p=Ui.weight();p.setMargins(4,4,4,4);line.addView(b,p);}content.addView(line,new LinearLayout.LayoutParams(-1,58));}
+        TextView hint=Ui.text(this,"מקשי הטלפון הפיזיים פועלים ישירות. אין צורך בלוח מקשים על המסך.",13);hint.setTextColor(Ui.muted(this));hint.setPadding(0,2,0,12);content.addView(hint);
+        number=new EditText(this);number.setHint("מספר טלפון");number.setGravity(Gravity.CENTER);number.setTextSize(25);number.setTextColor(Ui.ink(this));number.setHintTextColor(Ui.muted(this));number.setSingleLine();number.setInputType(3);number.setShowSoftInputOnFocus(true);number.setBackground(Ui.rounded(Ui.card(this),26));
+        LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,68);np.setMargins(0,4,0,12);content.addView(number,np);
         LinearLayout actions=new LinearLayout(this);actions.setGravity(Gravity.CENTER);
         Button call=Ui.filled(this,"☎  התקשר");call.setOnClickListener(v->placeCall(number.getText().toString().trim()));
         Button del=Ui.button(this,"⌫  מחק");del.setOnClickListener(v->{String s=number.getText().toString();if(!s.isEmpty())number.setText(s.substring(0,s.length()-1));});
         Button add=Ui.button(this,"＋  איש קשר");add.setOnClickListener(v->startActivity(new Intent(Intent.ACTION_INSERT,ContactsContract.Contacts.CONTENT_URI)));
         actions.addView(call,Ui.weight());actions.addView(del,Ui.weight());actions.addView(add,Ui.weight());content.addView(actions);
+        TextView physical=Ui.text(this,"🟢 מקש ירוק: שיחה נכנסת = מענה  •  ללא שיחה = יומן אחרונות",14);physical.setTextColor(Ui.muted(this));physical.setGravity(Gravity.CENTER);physical.setPadding(0,24,0,10);content.addView(physical);
         TextView role=Ui.text(this,isDefaultDialer()?"✓ האפליקציה מוגדרת כחייגן ברירת המחדל":"הגדר אותי כחייגן ברירת המחדל",13);role.setTextColor(isDefaultDialer()?Ui.accent(this):Ui.muted(this));role.setGravity(Gravity.CENTER);role.setPadding(0,14,0,6);role.setOnClickListener(v->requestDialerRole());content.addView(role);
     }
 
