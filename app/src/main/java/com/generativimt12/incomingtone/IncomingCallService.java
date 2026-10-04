@@ -18,6 +18,8 @@ public class IncomingCallService extends InCallService {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Set<Call> ringingCalls = new HashSet<>();
 
+    public static IncomingCallService getInstance(){ return instance; }
+
     public static Call getCurrentCall() {
         return instance == null ? null : instance.findActiveCall();
     }
