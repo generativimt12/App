@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 0865bef493252e4fce247e25940410a8c57c2d71
+          ref: main
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
