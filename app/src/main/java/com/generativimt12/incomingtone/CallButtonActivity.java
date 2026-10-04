@@ -6,6 +6,18 @@ import android.telecom.Call;
 import android.telecom.TelecomManager;
 
 public class CallButtonActivity extends Activity {
+    @Override public boolean onKeyDown(int keyCode, android.view.KeyEvent event){
+        if(keyCode==android.view.KeyEvent.KEYCODE_CALL ||
+           keyCode==android.view.KeyEvent.KEYCODE_ENTER ||
+           keyCode==android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+           keyCode==android.view.KeyEvent.KEYCODE_HEADSETHOOK ||
+           keyCode==android.view.KeyEvent.KEYCODE_DIAL ||
+           keyCode==android.view.KeyEvent.KEYCODE_FOCUS){
+            IncomingCallService.answerIncoming();
+            return true;
+        }
+        return super.onKeyDown(keyCode,event);
+    }
     @Override protected void onCreate(Bundle b){
         super.onCreate(b);
         Call c=IncomingCallService.getCurrentCall();
