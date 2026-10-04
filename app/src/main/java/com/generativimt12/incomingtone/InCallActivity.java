@@ -37,7 +37,7 @@ public class InCallActivity extends Activity {
         getWindow().getDecorView().requestFocus();
         applyBars();build();refresh();
     }
-    @Override protected void onPostResume(){super.onPostResume();requestFocus();}
+    @Override protected void onPostResume(){super.onPostResume();getWindow().getDecorView().requestFocus();}
     @Override protected void onResume(){super.onResume();refresh();handler.removeCallbacks(tick);handler.postDelayed(tick,400);}
     @Override public boolean onKeyDown(int keyCode, KeyEvent event){
         if(isAnswerKey(keyCode) && current()!=null && current().getState()==Call.STATE_RINGING){
