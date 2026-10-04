@@ -83,7 +83,8 @@ public class InCallActivity extends Activity {
         if(state==Call.STATE_ACTIVE){if(activeAt==0)activeAt=System.currentTimeMillis();timer.setText(formatElapsed(System.currentTimeMillis()-activeAt));}
         else {activeAt=0;timer.setText("");}
         buildControls(state);
-        if(SettingsStore.autoSpeaker(this)&&state==Call.STATE_ACTIVE) setSpeaker(true);\n        refreshBottomBar();
+        if(SettingsStore.autoSpeaker(this)&&state==Call.STATE_ACTIVE) setSpeaker(true);
+        refreshBottomBar();
     }
 
     private void refreshBottomBar(){
