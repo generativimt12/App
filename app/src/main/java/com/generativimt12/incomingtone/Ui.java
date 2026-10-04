@@ -33,7 +33,7 @@ public final class Ui {
         return d;
     }
 
-    public static int dp(Context c,float v){return (int)(v*c.getResources().getDisplayMetrics().density+0.5f);}
+    public static int dp(Context c,float v){return c==null?(int)(v*1f+0.5f):(int)(v*c.getResources().getDisplayMetrics().density+0.5f);}
     public static GradientDrawable rounded(int color, float radius) {
         GradientDrawable d = new GradientDrawable();
         d.setColor(color); d.setCornerRadius(radius); return d;
@@ -53,6 +53,6 @@ public final class Ui {
         Button b = button(c, label); b.setTextColor(Color.WHITE); b.setBackground(rounded(accent(c), 28)); return b;
     }
 
-    public static LinearLayout.LayoutParams lp(int w, int h) { return new LinearLayout.LayoutParams(w,h); }
+    public static LinearLayout.LayoutParams lp(int w, int h) { return new LinearLayout.LayoutParams(w<0?w:dp((Context)null,w),h<0?h:dp((Context)null,h)); }
     public static LinearLayout.LayoutParams weight() { return new LinearLayout.LayoutParams(0,-2,1); }
 }
