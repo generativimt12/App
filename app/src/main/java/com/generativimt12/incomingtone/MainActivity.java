@@ -225,9 +225,8 @@ public class MainActivity extends Activity {
     @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){
         super.onRequestPermissionsResult(requestCode,permissions,grantResults);
         if(requestCode==PERM_REQUEST){
-            ContactIndex.refreshAsync(this);
-            new android.os.Handler().postDelayed(()->{ContactIndex.refreshAsync(this);showPage();},1200);
-            new android.os.Handler().postDelayed(()->{ContactIndex.refreshAsync(this);showPage();},3200);
+            showPage();
+            ContactIndex.refreshAsync(this,()->{if(content!=null)showPage();});
         }
     }
     private void handleDialIntent(Intent i){if(i!=null&&Intent.ACTION_DIAL.equals(i.getAction())&&i.getData()!=null&&number!=null){String s=i.getData().getSchemeSpecificPart();if(s!=null)number.setText(s);}}
