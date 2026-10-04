@@ -34,12 +34,26 @@ public class MainActivity extends Activity {
         applyBars();
         build();
         handleDialIntent(getIntent());
+        handleCallButtonIntent(getIntent());
         requestDataPermissions();
         ContactIndex.refreshAsync(this,()->{if(content!=null)showPage();});
     }
 
     @Override protected void onResume(){ super.onResume(); applyBars(); if(content!=null){if(getIntent().getBooleanExtra("open_recent",false)){page=2;getIntent().removeExtra("open_recent");}ContactIndex.refreshAsync(this);showPage();} }
-    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);handleDialIntent(i);if(content!=null)showPage();}
+    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);handleDialIntent(i);handleCallButtonIntent(i);if(content!=null)showPage();}
+    private void handleCallButtonIntent(Intent i){
+        if(i!=null && Intent.ACTION_CALL_BUTTON.equals(i.getAction())){
+            android.telecom.Call c=IncomingCallService.getCurrentCall();
+            if(c!=null && c.getState()==android.telecom.Call.STATE_RINGING){
+                IncomingCallService.answerIncoming();
+            }else{
+                page=2; query="";
+                if(globalSearch!=null)globalSearch.setText("");
+                if(content!=null)showPage();
+            }
+            i.setAction(null);
+        }
+    }
     @Override public boolean dispatchKeyEvent(KeyEvent event){
         if(event.getAction()==KeyEvent.ACTION_DOWN){
             int code=event.getKeyCode();
