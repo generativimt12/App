@@ -69,7 +69,7 @@ public class MainActivity extends Activity {
     }
 
     private void build(){
-        LinearLayout root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(18,14,18,8); root.setBackgroundColor(Ui.bg(this));
+        LinearLayout root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(Ui.dp(this,18),Ui.dp(this,14),Ui.dp(this,18),Ui.dp(this,8)); root.setBackgroundColor(Ui.bg(this));
 
         LinearLayout top=new LinearLayout(this); top.setGravity(Gravity.CENTER_VERTICAL);
         TextView title=Ui.text(this,"PHONE",25); title.setTypeface(null,1); title.setLetterSpacing(.08f);
@@ -136,6 +136,7 @@ public class MainActivity extends Activity {
     private void showContacts(){
         TextView h=Ui.text(this,"אנשי קשר",24);h.setTypeface(null,1);content.addView(h);
         Button add=Ui.filled(this,"＋  הוסף איש קשר");add.setOnClickListener(v->startActivity(new Intent(Intent.ACTION_INSERT,ContactsContract.Contacts.CONTENT_URI)));LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(-1,54);ap.setMargins(0,8,0,12);content.addView(add,ap);
+        addAlphabetScroller(content);
         LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);content.addView(list);
         if(checkSelfPermission(Manifest.permission.READ_CONTACTS)!=PackageManager.PERMISSION_GRANTED){list.addView(info("אשר הרשאת אנשי קשר."));return;}
         loadContacts(list,"");
