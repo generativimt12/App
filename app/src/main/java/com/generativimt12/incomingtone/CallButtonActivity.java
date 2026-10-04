@@ -11,7 +11,6 @@ public class CallButtonActivity extends Activity {
            keyCode==android.view.KeyEvent.KEYCODE_ENTER ||
            keyCode==android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
            keyCode==android.view.KeyEvent.KEYCODE_HEADSETHOOK ||
-           keyCode==android.view.KeyEvent.KEYCODE_DIAL ||
            keyCode==android.view.KeyEvent.KEYCODE_FOCUS){
             IncomingCallService.answerIncoming();
             return true;
