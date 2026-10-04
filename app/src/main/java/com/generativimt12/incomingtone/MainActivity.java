@@ -186,7 +186,7 @@ public class MainActivity extends Activity {
     private void requestDataPermissions(){
         if(android.os.Build.VERSION.SDK_INT<23)return;
         java.util.ArrayList<String> missing=new java.util.ArrayList<>();
-        String[] wanted={Manifest.permission.READ_CONTACTS,Manifest.permission.WRITE_CONTACTS,Manifest.permission.READ_CALL_LOG,Manifest.permission.WRITE_CALL_LOG,Manifest.permission.CALL_PHONE,Manifest.permission.READ_PHONE_STATE};
+        String[] wanted={Manifest.permission.READ_CONTACTS,Manifest.permission.WRITE_CONTACTS,Manifest.permission.READ_CALL_LOG,Manifest.permission.WRITE_CALL_LOG,Manifest.permission.CALL_PHONE,Manifest.permission.ANSWER_PHONE_CALLS,Manifest.permission.READ_PHONE_STATE};
         for(String p:wanted)if(checkSelfPermission(p)!=PackageManager.PERMISSION_GRANTED)missing.add(p);
         if(!missing.isEmpty())requestPermissions(missing.toArray(new String[0]),PERM_REQUEST);
     }
