@@ -29,6 +29,13 @@ public final class SettingsStore {
     public static void setToneUri(Context c,String uri){p(c).edit().putString("tone_uri",uri==null?"":uri).apply();}
     public static String toneLabel(Context c){return p(c).getString("tone_label","קלאסי");}
     public static void setToneLabel(Context c,String s){p(c).edit().putString("tone_label",s).apply();}
+    public static int contactAccent(Context c,String contactId){
+        if(contactId==null||contactId.isEmpty())return -1;
+        return p(c).getInt("contact_accent_"+contactId,-1);
+    }
+    public static void setContactAccent(Context c,String contactId,int value){
+        if(contactId!=null&&!contactId.isEmpty())p(c).edit().putInt("contact_accent_"+contactId,value).apply();
+    }
     public static String toneName(Context c){
         String uri=toneUri(c);
         if(uri!=null&&!uri.isEmpty())return toneLabel(c);
